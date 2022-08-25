@@ -13,11 +13,6 @@ init python:
     agility = 0
     health = 0
     intellect = 0
-#Текущие характеристики в бою
-    currentstr = strength
-    currentagi = agility
-    currenthlt = health
-    currentint = intellect
 #Основные параметры
     character_class = ''
     character_class_rus = ''
@@ -32,6 +27,13 @@ init python:
     status = []
     resistance = []
     armor_spell_count = 0
+#Текущие характеристики в бою
+    currenthpmax = hp_max
+    currentmanamax = mana_max
+    currentstr = strength
+    currentagi = agility
+    currenthlt = health
+    currentint = intellect
 #Цена за повышение основной харктеристики
     strengthcost = 80
     agilitycost = 90
@@ -239,6 +241,7 @@ init python:
         for i in status:
             if 'ghost' in i:
                 r = 1
+                break
         if r == 0:
             x = dice(2) + 1
             if x > defence:
@@ -351,7 +354,9 @@ init python:
     def hp_max_def(): #Определение максимального значения жизненных сил
         global hp_max
         global health
+        global currenthpmax
         hp_max = ((health * 4) + 4)
+        currenthpmax = hp_max
 
     def attack(enemy): #Определение значения атаки в бою
         global character_class
@@ -571,6 +576,7 @@ init python:
         global intellect
         global mana_max
         global character_class
+        global currentmanamax
         if character_class == 'warrior':
             mana_max = intellect
         elif character_class == 'thief':
@@ -617,6 +623,7 @@ init python:
                 mana_max = (intellect - 2) * 4
             else:
                 mana_max = 2
+        currentmanamax = mana_max
 
     def learn():
         global character_class
@@ -653,10 +660,16 @@ init python:
         global currentagi
         global currenthlt
         global currentint
+        global currenthpmax
+        global currentmanamax
+        global hp_max
+        global mana_max
         currentstr = strength
         currentagi = agility
         currenthlt = health
         currentint = intellect
+        currenthpmax = hp_max
+        currentmanamax = mana_max
     rnd = 0
     def turn_def():
         global rnd
@@ -740,6 +753,7 @@ init python:
 #             text "Строка вот такая длинная"
 #             text "Cnhjrf djn nfrfz lkbyyfz"
 label start:
+    hide main_menu
     $ backpack.currentweapon.append(sword)
     "Выбери своего странника"
     show screen character_screen
@@ -917,10 +931,6 @@ label character_creation_final:
         "Ты — странник-бард по имени [name]"
     elif character_class == 'shaman':
         "Ты — странник-шаман по имени [name]"
-    "Твои характеристики: Сила — [strength], Ловкость — [agility], Здоровье — [health], Интеллект — [intellect]."
-    "Твоя жизненная энергия: [hp] / [hp_max]. Твоя магическая энергя: [mana] / [mana_max]. Защита: [defence]"
-    "Количество монет в кармане — [backpack.money]"
-    "В руке у тебя [backpack.currentweapon[0].name] с уроном [backpack.currentweapon[0].damage]."
     "Настало время приключений!"
     nvl clear
     call choose_path
@@ -936,14 +946,9 @@ label character_creation_final:
 #         text "Нижний правый"
 label choose_path:
     nvl clear
+    hide screen character_screen
     call screen worldmap()
-screen worldmap():
-    tag worldmap
-    use navigation
-    imagemap:
-        ground "images/ground.jpg"
-        hover "images/hover.jpg"
-        hotspot (71, 324, 60, 40) action Jump('goto_south_castle')
+
 
 label goto_south_castle:
     $ territory = 'south_castle'

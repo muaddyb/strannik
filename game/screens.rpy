@@ -265,7 +265,7 @@ screen quick_menu():
 init python:
     config.overlay_screens.append("quick_menu")
 
-default quick_menu = True
+default quick_menu = False
 
 style quick_button is default
 style quick_button_text is button_text
@@ -1235,7 +1235,7 @@ style skip_text:
 style skip_triangle:
     ## We have to use a font that has the BLACK RIGHT-POINTING SMALL TRIANGLE
     ## glyph in it.
-    font "DejaVuSans.ttf"
+    font "fonts/clacon2.ttf"
 
 
 ## Notify screen ###############################################################
@@ -1288,7 +1288,7 @@ screen nvl(dialogue, items=None):
 
     window:
         style "nvl_window"
-        xpos 550
+        xpos 100
         
         has vbox:
             spacing gui.nvl_spacing
@@ -1521,6 +1521,14 @@ screen character_screen():
             text "[name]"
             text "[character_class_rus]"
             image "images/shaman.png"
+            null height 10
+            hbox:
+                vbox:
+                    xminimum 100
+                    text "{color=#c35d5d}[hp] / [currenthpmax] ЖС {/color}|" 
+                vbox:
+                    text "| {color=#7f60e2}[mana] / [currentmanamax] МЭ{/color}"
+            null height 10
             hbox:
                 vbox:
                     xminimum 160
@@ -1529,11 +1537,50 @@ screen character_screen():
                     xalign 0.0
                     text "[currentstr]"
             hbox:
-                text "Ловкость"
-                text "[currentagi]"
+                vbox:
+                    xminimum 160
+                    text "Ловкость"
+                vbox:
+                    text "[currentagi]"
             hbox:
-                text "Здоровье"
-                text "[currenthlt]"
+                vbox:
+                    xminimum 160
+                    text "Здоровье"
+                vbox:
+                    text "[currenthlt]"
             hbox:
-                text "Интеллект"
-                text "[currentint]"
+                vbox:
+                    xminimum 160
+                    text "Интеллект"
+                vbox:
+                    text "[currentint]"
+            null height 10
+            hbox:
+                vbox:
+                    xminimum 160
+                    text "[backpack.currentweapon[0].name]"
+                vbox:
+                    text "[backpack.currentweapon[0].damage]"
+            null height 10
+            hbox:
+                vbox:
+                    xminimum 160
+                    text "Защита"
+                vbox:
+                    text "[defence]"
+            hbox:
+                vbox:
+                    if len(backpack.currentarmor):
+                        text "[backpack.currentarmor[0].name]"
+                        text "[backpack.currentarmor[0].defencebonus]"
+                vbox:
+                    if len(backpack.currentshield):
+                        text "[backpack.currentshield[0].name]"
+                        text "[backpack.currentshield[0].defencebonus]"
+
+screen worldmap():
+    imagemap:
+        xalign 0.5
+        ground "images/ground.jpg"
+        hover "images/hover.jpg"
+        hotspot (71, 324, 60, 40) action [Show("character_screen"), Jump('goto_south_castle')]
