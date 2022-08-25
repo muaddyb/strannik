@@ -1,0 +1,11 @@
+﻿I'm sorry, but errors were detected in your script. Please correct the
+errors listed below, and try again.
+
+
+File "game/script.rpy", line 8: invalid syntax
+    image shaman_icon = "images/shaman.png"
+           ^
+    
+
+Ren'Py Version: Ren'Py 8.0.2.22081402
+Wed Aug 24 23:56:33 2022

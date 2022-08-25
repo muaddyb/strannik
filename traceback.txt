@@ -1,0 +1,77 @@
+﻿I'm sorry, but an uncaught exception occurred.
+
+While running game code:
+  File "game/script.rpy", line 768, in script
+    menu:
+  File "renpy/common/000window.rpy", line 111, in _window_auto_callback
+    _window_hide(auto=True)
+  File "renpy/common/000window.rpy", line 101, in _window_hide
+    renpy.with_statement(trans)
+  File "game/screens.rpy", line 1516, in execute
+    screen character_screen():
+  File "game/screens.rpy", line 1516, in execute
+    screen character_screen():
+  File "game/screens.rpy", line 1518, in execute
+    frame xalign 1 ypos 0.01 xpos 0.009:
+  File "game/screens.rpy", line 1519, in execute
+    vbox:
+  File "game/screens.rpy", line 1523, in execute
+    image shaman_icon
+  File "game/screens.rpy", line 1523, in <module>
+    image shaman_icon
+NameError: name 'shaman_icon' is not defined
+
+-- Full Traceback ------------------------------------------------------------
+
+Full traceback:
+  File "game/script.rpy", line 768, in script
+    menu:
+  File "/home/muaddyb/Coding/renpy-8.0.2-sdk/renpy/ast.py", line 1861, in execute
+    statement_name("menu")
+  File "/home/muaddyb/Coding/renpy-8.0.2-sdk/renpy/ast.py", line 47, in statement_name
+    i(name)
+  File "renpy/common/000window.rpy", line 111, in _window_auto_callback
+    _window_hide(auto=True)
+  File "renpy/common/000window.rpy", line 101, in _window_hide
+    renpy.with_statement(trans)
+  File "/home/muaddyb/Coding/renpy-8.0.2-sdk/renpy/exports.py", line 1653, in with_statement
+    return renpy.game.interface.do_with(trans, paired, clear=clear)
+  File "/home/muaddyb/Coding/renpy-8.0.2-sdk/renpy/display/core.py", line 2798, in do_with
+    return self.interact(trans_pause=True,
+  File "/home/muaddyb/Coding/renpy-8.0.2-sdk/renpy/display/core.py", line 3377, in interact
+    repeat, rv = self.interact_core(preloads=preloads, trans_pause=trans_pause, pause=pause, pause_start=pause_start, **kwargs) # type: ignore
+  File "/home/muaddyb/Coding/renpy-8.0.2-sdk/renpy/display/core.py", line 3804, in interact_core
+    root_widget.visit_all(lambda i : i.per_interact())
+  File "/home/muaddyb/Coding/renpy-8.0.2-sdk/renpy/display/core.py", line 582, in visit_all
+    d.visit_all(callback, seen)
+  File "/home/muaddyb/Coding/renpy-8.0.2-sdk/renpy/display/core.py", line 582, in visit_all
+    d.visit_all(callback, seen)
+  File "/home/muaddyb/Coding/renpy-8.0.2-sdk/renpy/display/core.py", line 582, in visit_all
+    d.visit_all(callback, seen)
+  [Previous line repeated 1 more time]
+  File "/home/muaddyb/Coding/renpy-8.0.2-sdk/renpy/display/screen.py", line 451, in visit_all
+    callback(self)
+  File "/home/muaddyb/Coding/renpy-8.0.2-sdk/renpy/display/core.py", line 3804, in <lambda>
+    root_widget.visit_all(lambda i : i.per_interact())
+  File "/home/muaddyb/Coding/renpy-8.0.2-sdk/renpy/display/screen.py", line 462, in per_interact
+    self.update()
+  File "/home/muaddyb/Coding/renpy-8.0.2-sdk/renpy/display/screen.py", line 653, in update
+    self.screen.function(**self.scope)
+  File "game/screens.rpy", line 1516, in execute
+    screen character_screen():
+  File "game/screens.rpy", line 1516, in execute
+    screen character_screen():
+  File "game/screens.rpy", line 1518, in execute
+    frame xalign 1 ypos 0.01 xpos 0.009:
+  File "game/screens.rpy", line 1519, in execute
+    vbox:
+  File "game/screens.rpy", line 1523, in execute
+    image shaman_icon
+  File "game/screens.rpy", line 1523, in <module>
+    image shaman_icon
+NameError: name 'shaman_icon' is not defined
+
+Linux-5.15.0-46-generic-x86_64-with-glibc2.35 x86_64
+Ren'Py 8.0.2.22081402
+Strannik 1.0
+Wed Aug 24 23:57:22 2022
