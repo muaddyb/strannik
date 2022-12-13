@@ -1,0 +1,14 @@
+﻿I'm sorry, but errors were detected in your script. Please correct the
+errors listed below, and try again.
+
+
+File "game/script.rpy", line 1741: expected statement.
+    mana -= lightning_spell.manacost * lightning_spell_amount
+          ^
+
+File "game/script.rpy", line 1750: expected statement.
+    turn()
+          ^
+
+Ren'Py Version: Ren'Py 8.0.2.22081402
+Sun Aug 28 00:34:24 2022

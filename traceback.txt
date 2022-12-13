@@ -1,0 +1,46 @@
+﻿I'm sorry, but an uncaught exception occurred.
+
+While running game code:
+  File "game/script.rpy", line 989, in script call
+    call choose_path
+  File "game/script.rpy", line 1040, in script call
+    call fight_menu
+  File "game/script.rpy", line 1064, in script call
+    call fight_magic
+  File "game/script.rpy", line 1082, in script call
+    call fight_cast
+  File "game/script.rpy", line 1139, in script call
+    call lightning_chain_spell_cast
+  File "game/script.rpy", line 1758, in script
+    python:
+  File "game/script.rpy", line 1807, in <module>
+    lightning_chain_random = renpy.random(0, lightning_chain_range)
+TypeError: 'DetRandom' object is not callable
+
+-- Full Traceback ------------------------------------------------------------
+
+Full traceback:
+  File "game/script.rpy", line 989, in script call
+    call choose_path
+  File "game/script.rpy", line 1040, in script call
+    call fight_menu
+  File "game/script.rpy", line 1064, in script call
+    call fight_magic
+  File "game/script.rpy", line 1082, in script call
+    call fight_cast
+  File "game/script.rpy", line 1139, in script call
+    call lightning_chain_spell_cast
+  File "game/script.rpy", line 1758, in script
+    python:
+  File "/home/muaddyb/Coding/renpy-8.0.2-sdk/renpy/ast.py", line 1131, in execute
+    renpy.python.py_exec_bytecode(self.code.bytecode, self.hide, store=self.store)
+  File "/home/muaddyb/Coding/renpy-8.0.2-sdk/renpy/python.py", line 1052, in py_exec_bytecode
+    exec(bytecode, globals, locals)
+  File "game/script.rpy", line 1807, in <module>
+    lightning_chain_random = renpy.random(0, lightning_chain_range)
+TypeError: 'DetRandom' object is not callable
+
+Linux-5.15.0-46-generic-x86_64-with-glibc2.35 x86_64
+Ren'Py 8.0.2.22081402
+Strannik 1.0
+Sun Aug 28 00:37:58 2022
