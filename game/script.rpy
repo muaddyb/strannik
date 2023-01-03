@@ -7,6 +7,222 @@ define narrator = nvl_narrator
 
 init python:
     menu = nvl_menu
+
+    class Character:
+        name = 'Character'
+        hp_default = 0
+        hp = 0
+
+        @staticmethod
+        def dice(n = 1, addition = 0):
+            x = 0
+            for i in range(n): 
+                x += renpy.random.randint(1,6)
+            return x + addition
+    
+    class Player(Character):
+        strength_default = 0
+        strength = 0
+        agility_default = 0
+        agility = 0
+        health_default = 0
+        health = 0
+        intellect_default = 0
+        intellect = 0
+
+        round_count = 1
+
+        defence_default = 0
+        defence = 0
+
+        money = 0
+        weapon_list = []
+        armor_list = []
+        item_list = []
+        magic_item_list = []
+        weapon_current = []
+        shield_current = []
+        armor_current = []
+        weapon_banned = []
+        spellbook = []
+
+        ghost_status = 0
+
+        def defence_calc(self):
+            self.defence = self.agility + 7
+            if len(self.armor_current):
+                self.defence += self.armor_current[0].bonus
+            if len(self.shield_current):
+                self.defence += self.shield_current[0].bonus
+        
+        def learn(self, spell):
+            if spell in self.spellbook:
+                renpy.say(narrator, spell.name + " уже известно.")
+                return False
+            else:
+                return True
+        
+        def restore_stats(self):
+            self.strength = self.strength_default
+            self.agility = self.agility_default
+            self.health = self.health_default
+            self.intellect = self.intellect_default
+        
+        def restore_hp(self):
+            self.hp = self.hp_default
+        
+        def restore_mana(self):
+            self.mana = self.mana_default
+
+        def turn_define(self):
+            x = 0
+            y = 0
+            while x == y:
+                x = self.dice()
+                y = self.dice()
+            if x > y:
+                self.round_count = 1
+            else:
+                self.round_count = 0
+        
+        def turn(self):
+            if self.ghost_status > 0:
+                self.ghost_status -= 1
+            if self.round_count == 0:
+                self.round_count = 1
+            else:
+                self.round_count -= 1
+
+        def is_enough_mana():
+            for i in self.spellbook:
+                if self.mana >= i.mana_cost:
+                    return(True)
+                    break
+                else:
+                    return(False)
+    
+    class Warrior(Player):
+        def __init__(self, name, strength_default, agility_default, health_default, intellect_default, belovedweapon):
+            self.name = str(name)
+
+            self.belovedweapon = belovedweapon
+
+            self.strength_default = strength_default
+            self.strength = strength_default
+            self.agility_default = agility_default
+            self.agility = agility_default
+            self.health_default = health_default
+            self.intellect_default = intellect_default
+            self.intellect = intellect_default
+
+            self.round_count = 2
+
+            self.hp_default = self.health_default * 4 + 4
+            self.hp = self.hp_default
+
+            self.mana_default = self.intellect_default
+            self.mana = self.mana_default
+        
+
+        def defence_calc(self):
+            super().defence_calc()
+            if self.weapon_current[0] in self.belovedweapon:
+                self.defence += 2
+
+        def attack_rate(self, enemy):
+            if self.strength == 1:
+                i = int(self.dice(2))
+            elif self.strength == 2:
+                i = int(self.dice(2, 2))
+            elif self.strength == 3:
+                i = int(self.dice(2, 4))
+            elif self.strength == 4:
+                i = int(self.dice(3))
+            elif self.strength == 5:
+                i = int(self.dice(3, 2))
+            elif self.strength == 6:
+                i = int(self.dice(3, 4))
+            elif self.strength == 7:
+                i = int(self.dice(4))
+            elif self.strength == 8:
+                i = int(self.dice(4, 2))
+            elif self.strength == 9:
+                i = int(self.dice(4, 4))
+            elif self.strength == 10:
+                i = int(self.dice(5))
+            elif self.strength == 11:
+                i = int(self.dice(5, 2))
+            elif self.strength == 12:
+                i = int(self.dice(5, 4))
+            elif self.strength == 13:
+                i = int(self.dice(6))
+            elif self.strength == 14:
+                i = int(self.dice(6, 2))
+            elif self.strength == 15:
+                i = int(self.dice(6, 4))
+            elif self.strength == 16:
+                i = int(self.dice(7))
+            elif self.strength == 17:
+                i = int(self.dice(7, 2))
+            elif self.strength == 18:
+                i = int(self.dice(7, 4))
+            if self.weapon_current[0] in self.belovedweapon:
+                i += self.dice()
+            return i
+
+        def learn(self, spell):
+            if super().learn(self, spell):
+                if self.dice() > 4:
+                    self.spellbook.append(spell)
+                    renpy.say(narrator, "Заклинание " + spell.name + " выучено!")
+                else:
+                    renpy.say(narrator, "Заклинание " + spell.name + " не удалось выучить.")
+
+        def turn_define(self):
+            x = 0
+            y = 0
+            while x == y:
+                x = self.dice()
+                y = self.dice()
+            if x > y:
+                self.round_count = 2
+            else:
+                self.round_count = 0
+
+        def turn(self):
+            if self.ghost_status > 0:
+                self.ghost_status -= 1
+            if self.round_count == 0:
+                self.round_count = 2
+            else:
+                self.round_count -= 1
+
+                """
+            if i > enemy.defence:
+                renpy.with_statement(hpunch)
+                renpy.say(narrator, "Атака успешна.")
+            if self.weapon_current[0].damage_type in enemy.resistance:
+                renpy.say(narrator, "Но " + self.weapon_current[0].name + " не наносит урона. " + enemy.name + " не боится ударов этого оружия.")
+            else:    
+                enemy.hp -= self.currentweapon[0].damage
+                renpy.say(narrator, enemy.name + " теряет " + str(self.currentweapon[0].damage) + " ЖС.")
+                if enemy.hp <= 0:
+                    renpy.say(narrator, enemy.name + " убит!")
+                    """
+
+
+
+            
+
+
+    class Thief(Player):
+        pass
+    
+    class Bard(Player):
+        pass
+    
+    class Shaman(Player):
+        pass
 #Имя по-умолчанию
     name = 'Strannik'
 #Базовые характеристики
