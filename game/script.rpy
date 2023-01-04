@@ -168,6 +168,48 @@ init python:
 
         belovedweapon = []
 
+        def hp_default_define(self):
+            return (self.health_default * 4 + 4)
+
+        def attack_rate(self):
+            if self.strength == 1:
+                i = int(self.dice(2))
+            elif self.strength == 2:
+                i = int(self.dice(2, 2))
+            elif self.strength == 3:
+                i = int(self.dice(2, 4))
+            elif self.strength == 4:
+                i = int(self.dice(3))
+            elif self.strength == 5:
+                i = int(self.dice(3, 2))
+            elif self.strength == 6:
+                i = int(self.dice(3, 4))
+            elif self.strength == 7:
+                i = int(self.dice(4))
+            elif self.strength == 8:
+                i = int(self.dice(4, 2))
+            elif self.strength == 9:
+                i = int(self.dice(4, 4))
+            elif self.strength == 10:
+                i = int(self.dice(5))
+            elif self.strength == 11:
+                i = int(self.dice(5, 2))
+            elif self.strength == 12:
+                i = int(self.dice(5, 4))
+            elif self.strength == 13:
+                i = int(self.dice(6))
+            elif self.strength == 14:
+                i = int(self.dice(6, 2))
+            elif self.strength == 15:
+                i = int(self.dice(6, 4))
+            elif self.strength == 16:
+                i = int(self.dice(7))
+            elif self.strength == 17:
+                i = int(self.dice(7, 2))
+            elif self.strength == 18:
+                i = int(self.dice(7, 4))
+            return i
+
         def defence_calc(self):
             self.defence = self.agility + 7
             if len(self.armor_current):
@@ -175,12 +217,15 @@ init python:
             if len(self.shield_current):
                 self.defence += self.shield_current[0].bonus
         
+        def learn_define(self, spell):
+            return False
+
         def learn(self, spell):
-            if spell in self.spellbook:
-                renpy.say(narrator, spell.name + " уже известно.")
-                return False
+            if self.learn_define():
+                self.spellbook.append(spell)
+                renpy.say(narrator, "Заклинание " + spell.name + " выучено!")
             else:
-                return True
+                renpy.say(narrator, "Заклинание " + spell.name + " не удалось выучить.")
         
         def restore_stats(self):
             self.strength = self.strength_default
@@ -249,8 +294,40 @@ init python:
             else:
                 renpy.say(narrator, self.name + "не может пользоваться этим оружием!")
         
-        
+        def equip_armor(self, item):
+            if item.type not in self.weapon_banned:
+                if len(self.armor_current):
+                    self.armor_list.append(self.armor_current[0])
+                    self.armor_current.remove[0]
+                self.armor_current.append(item)
+                self.armor_list.remove(item)
+                self.defence_calc()
+            else:
+                renpy.say(narrator, self.name + " не может пользоваться доспехами.")
 
+        def equip_shield(self, item):
+            if item.type not in self.weapon_banned:
+                if len(self.shield_current):
+                    self.shield_list.append(self.shield_current[0])
+                    self.shield_current.remove[0]
+                self.shield_current.append(item)
+                self.shield_list.remove(item)
+                self.defence_calc()
+            else:
+                renpy.say(narrator, self.name + " не может пользоваться щитами.")
+        
+        def steal_item_define(self):
+            renpy.say(narrator, self.name + " никогда не опустится до воровства!")
+            return 0
+
+        def steal_item(self, item):
+            if i > item.cost:
+                self.add_item(item)
+                renpy.say(narrator, self.name + " украл " + item.name)
+                return True
+            else:
+                renpy.say(narrator, self.name + " не смог украсть " + item.name)
+                return False
     
     class Warrior(Player):
         def __init__(self, name, strength_default, agility_default, health_default, intellect_default):
@@ -269,12 +346,14 @@ init python:
 
             self.restore_stats()
 
-            self.hp_default = self.health_default * 4 + 4
+            self.hp_default = self.hp_default_define()
             self.restore_hp()
 
-            self.mana_default = self.intellect_default
+            self.mana_default = self.mana_default_define()
             self.restore_mana()
         
+        def mana_default_define(self):
+            return self.intellect_default
 
         def defence_calc(self):
             super().defence_calc()
@@ -282,100 +361,230 @@ init python:
                 self.defence += 2
 
         def attack_rate(self):
-            if self.strength == 1:
-                i = int(self.dice(2))
-            elif self.strength == 2:
-                i = int(self.dice(2, 2))
-            elif self.strength == 3:
-                i = int(self.dice(2, 4))
-            elif self.strength == 4:
-                i = int(self.dice(3))
-            elif self.strength == 5:
-                i = int(self.dice(3, 2))
-            elif self.strength == 6:
-                i = int(self.dice(3, 4))
-            elif self.strength == 7:
-                i = int(self.dice(4))
-            elif self.strength == 8:
-                i = int(self.dice(4, 2))
-            elif self.strength == 9:
-                i = int(self.dice(4, 4))
-            elif self.strength == 10:
-                i = int(self.dice(5))
-            elif self.strength == 11:
-                i = int(self.dice(5, 2))
-            elif self.strength == 12:
-                i = int(self.dice(5, 4))
-            elif self.strength == 13:
-                i = int(self.dice(6))
-            elif self.strength == 14:
-                i = int(self.dice(6, 2))
-            elif self.strength == 15:
-                i = int(self.dice(6, 4))
-            elif self.strength == 16:
-                i = int(self.dice(7))
-            elif self.strength == 17:
-                i = int(self.dice(7, 2))
-            elif self.strength == 18:
-                i = int(self.dice(7, 4))
+            i = super().attack_rate()
             if self.weapon_current[0] in self.belovedweapon:
                 i += self.dice()
             return i
 
-        def attack(self, enemy):
-            if self.attack_rate() > enemy.defence:
-                renpy.with_statement(hpunch)
-                renpy.say(narrator, "Атака успешна.")
-            if self.weapon_current[0].damage_type in enemy.resistance:
-                renpy.say(narrator, "Но " + self.weapon_current[0].name + " не наносит урона. " + enemy.name + " не боится ударов этого оружия.")
-            else:    
-                enemy.hp -= self.currentweapon[0].damage
-                renpy.say(narrator, enemy.name + " теряет " + str(self.currentweapon[0].damage) + " ЖС.")
-                if enemy.hp <= 0:
-                    renpy.say(narrator, enemy.name + " убит!")
-
-        def learn(self, spell):
-            if super().learn(self, spell):
-                if self.dice() > 4:
-                    self.spellbook.append(spell)
-                    renpy.say(narrator, "Заклинание " + spell.name + " выучено!")
-                else:
-                    renpy.say(narrator, "Заклинание " + spell.name + " не удалось выучить.")
-
-        def turn_define(self):
-            x = 0
-            y = 0
-            while x == y:
-                x = self.dice()
-                y = self.dice()
-            if x > y:
-                self.round_count = 2
+        def learn_define(self, spell):
+            if self.dice() > 4:
+                return True
             else:
-                self.round_count = 0
-
-        def turn(self):
-            if self.ghost_status > 0:
-                self.ghost_status -= 1
-            if self.round_count == 0:
-                self.round_count = 2
-            else:
-                self.round_count -= 1
-
-
-
-
-
-            
-
+                return False
 
     class Thief(Player):
-        pass
-    
+        def __init__(self, name, strength_default, agility_default, health_default, intellect_default):
+            self.name = str(name)
+
+            self.strength_default = strength_default
+            self.agility_default = agility_default
+            self.health_default = health_default
+            self.intellect_default = intellect_default
+
+            self.restore_stats()
+
+            self.hp_default = self.health_default * 4 + 4
+            self.restore_hp()
+
+            self.mana_default_define()
+            self.restore_mana()
+
+            self.weapon_banned = ['heavy_sword', 'spear']
+
+        def mana_default_define(self):
+            if self.intellect_default == 1:
+                i = 2
+            elif self.intellect_default == 2:
+                i = 3
+            elif self.intellect_default == 3:
+                i = 5
+            elif self.intellect_default == 4:
+                i = 6
+            elif self.intellect_default == 5:
+                i = 8
+            elif self.intellect_default == 6:
+                i = 9
+            elif self.intellect_default == 7:
+                i = 11
+            elif self.intellect_default == 8:
+                i = 12
+            elif self.intellect_default == 9:
+                i = 14
+            elif self.intellect_default == 10:
+                i = 15
+            elif self.intellect_default == 11:
+                i = 17
+            elif self.intellect_default == 12:
+                i = 18
+            elif self.intellect_default == 13:
+                i = 20
+            elif self.intellect_default == 14:
+                i = 21
+            elif self.intellect_default == 15:
+                i = 23
+            elif self.intellect_default == 16:
+                i = 24
+            elif self.intellect_default == 17:
+                i = 26
+            elif self.intellect_default == 18:
+                i = 27
+            return i
+        
+        def turn_define(self):
+            global round_count
+            round_count = 1
+
+        def attack_rate(self):
+            if self.agility > 9:
+                return super().attack_rate() + super().attack_rate()
+            else:
+                return super().attack_rate()
+        
+        def steal_item_define(self, item):
+            if self.agility == 1:
+                i = int(self.dice())
+            elif self.agility == 2:
+                i = int(self.dice(1, 2))
+            elif self.agility == 3:
+                i = int(self.dice(1, 4))
+            elif self.agility == 4:
+                i = int(self.dice(2, 0))
+            elif self.agility == 5:
+                i = int(self.dice(2, 2))
+            elif self.agility == 6:
+                i = int(self.dice(2, 4))
+            elif self.agility == 7:
+                i = int(self.dice(3, 0))
+            elif self.agility == 8:
+                i = int(self.dice(3, 2))
+            elif self.agility == 9:
+                i = int(self.dice(3, 4))
+            elif self.agility == 10:
+                i = int(self.dice(4, 0))
+            elif self.agility == 11:
+                i = int(self.dice(4, 2))
+            elif self.agility == 12:
+                i = int(self.dice(4, 4))
+            elif self.agility == 13:
+                i = int(self.dice(5, 0))
+            elif self.agility == 14:
+                i = int(self.dice(5, 2))
+            elif self.agility == 15:
+                i = int(self.dice(5, 4))
+            elif self.agility == 16:
+                i = int(self.dice(6))
+            elif self.agility == 17:
+                i = int(self.dice(6, 2))
+            elif self.agility == 18:
+                i = int(self.dice(6, 4))
+            return i
+            
+        def learn_define(self, spell):
+            if self.dice() > 3:
+                return True
+            else:
+                return False
+
     class Bard(Player):
-        pass
+        def __init__(self, name, strength_default, agility_default, health_default, intellect_default):
+            self.name = str(name)
+
+            self.strength_default = strength_default
+            self.agility_default = agility_default
+            self.health_default = health_default
+            self.intellect_default = intellect_default
+
+            self.restore_stats()
+
+            self.hp_default = self.hp_default_define()
+            self.restore_hp()
+
+            self.mana_default = mana_default_define()
+            self.restore_mana()
+        
+        def mana_default_define(self):
+            return self.intellect_default * 2
+        
+        def learn_define(self, spell):
+            if self.dice() > 2:
+                return True
+            else:
+                return False
+
+        def steal_item_define(self, item):
+            if self.agility < 4:
+                renpy.say(narrator, self.name + " недостаточно ловок для воровства.")
+                i = 0
+            elif self.agility == 4:
+                i = int(self.dice())
+            elif self.agility == 5:
+                i = int(self.dice(1, 2))
+            elif self.agility == 6:
+                i = int(self.dice(1, 4))
+            elif self.agility == 7:
+                i = int(self.dice(2, 0))
+            elif self.agility == 8:
+                i = int(self.dice(2, 2))
+            elif self.agility == 9:
+                i = int(self.dice(2, 4))
+            elif self.agility == 10:
+                i = int(self.dice(3, 0))
+            elif self.agility == 11:
+                i = int(self.dice(3, 2))
+            elif self.agility == 12:
+                i = int(self.dice(3, 4))
+            elif self.agility == 13:
+                i = int(self.dice(4, 0))
+            elif self.agility == 14:
+                i = int(self.dice(4, 2))
+            elif self.agility == 15:
+                i = int(self.dice(4, 4))
+            elif self.agility == 16:
+                i = int(self.dice(5, 0))
+            elif self.agility == 17:
+                i = int(self.dice(5, 2))
+            elif self.agility == 18:
+                i = int(self.dice(5, 4))
+            return i
     
     class Shaman(Player):
-        pass
+        def __init__(self, name, strength_default, agility_default, health_default, intellect_default):
+            self.name = str(name)
+
+            self.strength_default = strength_default
+            self.agility_default = agility_default
+            self.health_default = health_default
+            self.intellect_default = intellect_default
+
+            self.restore_stats()
+
+            self.hp_default = self.hp_default_define()
+            self.restore_hp()
+
+            self.mana_default = mana_default_define()
+            self.restore_mana()
+
+        def mana_default_define(self):
+            if self.intellect_default > 2:
+                return ((self.intellect_default - 2) * 4)
+            else:
+                return 2
+
+        def learn_define(self, spell):
+            if spell.type == 'song':
+                renpy.say(narrator, self.name + " испытывает отвращение, когда пытается выучить " + spell.name)
+                return False
+            else:
+                return True
+        
+        def attack_rate(self):
+            return (super().attack_rate() - self.dice())
+
+    class Spell():
+        def __init__(self, name, mana_cost, type):
+            self.name = name
+            self.manacost = manacost
+            self.type = type
 
     class Enemy(Character):
         damage_type = 'normal'
