@@ -4,14 +4,29 @@
 # name of the character.
 define narrator = nvl_narrator
 
-
 init python:
     menu = nvl_menu
+
+    round_count = 1
+    round_count_default = 1
 
     class Character:
         name = 'Character'
         hp_default = 0
         hp = 0
+
+        ghost_status = 0
+        stone_skin_status = 0
+        armor_spell_status = 0
+        poison_status = 0
+        noose_status = 0
+        fire_skin_status = False
+        resistance = []
+        damage_type = 'normal'
+        damage = 0
+
+        defence_default = 0
+        defence = 0
 
         @staticmethod
         def dice(n = 1, addition = 0):
@@ -19,7 +34,116 @@ init python:
             for i in range(n): 
                 x += renpy.random.randint(1,6)
             return x + addition
-    
+        
+        def turn_define(self):
+            global round_count
+            global round_count_default
+            x = 0
+            y = 0
+            while x == y:
+                x = self.dice()
+                y = self.dice()
+            if x > y:
+                round_count = round_count_default
+            else:
+                round_count = 0
+        
+        def turn(self):
+            global round_count
+            global round_count_default
+            if self.ghost_status > 0:
+                self.ghost_status -= 1
+            if round_count == 0:
+                round_count = round_count_default
+            else:
+                round_count -= 1
+
+        def isalive(self):
+            if self.hp > 0:
+                return True
+            else:
+                renpy.say(narrator, self.name + " мёртв.")
+                return False
+        
+        def attack_rate(self):
+            return 0
+
+        def attack(self, enemy):
+            if self.attack_rate() > enemy.defence:
+                renpy.say(narrator, self.name + " атакует успешно.")
+                return True
+            else:
+                renpy.say(narrator, self.name + " промахивается.")
+                return False
+        
+        def status_attack_start_effect(self):
+            if self.noose_status:
+                self.hp -= 1
+                renpy.say(narrator, self.name + " теряет 1 ЖС от невидимой удавки на шее.")
+            if self.poison_status:
+                self.hp -= 3
+                renpy.say(narrator, self.name + " теряет 3 ЖС от яда.")
+            return self.isalive()
+        
+        def stone_skin_status_check(self):
+            if self.stone_skin_status == 0:
+                return True
+            elif self.stone_skin_status > 1:
+                self.stone_skin_status -= 1
+                renpy.say(narrator, "Каменная кожа разрушается, поглощая весь урон. Осталось слоёв — " + str(self.stone_skin_status))
+                return False
+            else:
+                self.stone_skin_status -= 1
+                renpy.say(narrator, "Каменная кожа разрушается, поглощая весь урон.")
+                return False
+        
+        def ghost_status_check(self):
+            if self.ghost_status > 0:
+                renpy.say(narrator, self.name + " не получает урона, благодаря действию заклинания Привидение.")
+                return False
+            else:
+                return True
+        
+        def armor_spell_status_check(self):
+            if self.armor_spell_status > 1:
+                self.armor_spell_status -= 1
+                renpy.say(narrator, "Силовое поле пробито. Защита снижена. Осталось слоёв — " + str(self.armor_spell_status))
+            if self.armor_spell_status == 1:
+                self.armor_spell_status -= 1
+                renpy.say(narrator, "Силовое поле пробито. Защита снижена.")
+            
+        def fire_skin_status_check(self, enemy):
+            if self.fire_skin_status == True:
+                renpy.say(narrator, enemy.name + " испытывает жар огненной кожи.")
+                if 'fire' not in enemy.resistance:
+                    enemy.hp -= 5
+                    renpy.with_statement(hpunch)
+                    renpy.say(narrator, enemy.name + " получает урон 5 ЖС")
+                    enemy.isalive()
+                else:
+                    renpy.say(narrator, enemy.name + " не получает урона от огня.")
+        
+        def resistance_check(self, enemy):
+            if self.damage_type not in enemy.resistance:
+                return True
+            else:
+                renpy.say(narrator, enemy.name + " не получает урона.")
+                return False
+
+        def fight_attack(self, enemy):
+            if self.hp > 0:
+                if self.status_attack_start_effect():
+                    renpy.say(narrator, self.name + " атакует.")
+                    if self.attack(enemy):
+                        if enemy.ghost_status_check():
+                            if enemy.stone_skin_status_check():
+                                if self.resistance_check(enemy):
+                                    enemy.hp -= self.damage
+                                    renpy.say(narrator, enemy.name + " получает урон " + str(self.damage) + " ЖС.")
+                                    if enemy.isalive():
+                                        enemy.armor_spell_status_check()
+                                        enemy.fire_skin_status_check(self)
+                
     class Player(Character):
         strength_default = 0
         strength = 0
@@ -30,23 +154,19 @@ init python:
         intellect_default = 0
         intellect = 0
 
-        round_count = 1
-
-        defence_default = 0
-        defence = 0
-
         money = 0
         weapon_list = []
         armor_list = []
         item_list = []
         magic_item_list = []
+        shield_list = []
         weapon_current = []
         shield_current = []
         armor_current = []
         weapon_banned = []
         spellbook = []
 
-        ghost_status = 0
+        belovedweapon = []
 
         def defence_calc(self):
             self.defence = self.agility + 7
@@ -74,25 +194,6 @@ init python:
         def restore_mana(self):
             self.mana = self.mana_default
 
-        def turn_define(self):
-            x = 0
-            y = 0
-            while x == y:
-                x = self.dice()
-                y = self.dice()
-            if x > y:
-                self.round_count = 1
-            else:
-                self.round_count = 0
-        
-        def turn(self):
-            if self.ghost_status > 0:
-                self.ghost_status -= 1
-            if self.round_count == 0:
-                self.round_count = 1
-            else:
-                self.round_count -= 1
-
         def is_enough_mana():
             for i in self.spellbook:
                 if self.mana >= i.mana_cost:
@@ -100,28 +201,79 @@ init python:
                     break
                 else:
                     return(False)
+        
+        def add_item(self, item):
+            if type(item).__name__ == 'Weapon':
+                self.weapon_list.append(item)
+            elif type(item).__name__ == 'Armor':
+                self.armor_list.append(item)
+            elif type(item).__name__ == 'Item':
+                self.item_list.append(item)
+            elif type(item).__name__ == 'MagicItem':
+                self.magic_item_list.append(item)
+            elif type(item).__name__ == 'Shield':
+                self.shield_list.append(item)
+
+        def buy_item(self, item):
+            if self.money >= item.cost:
+                self.add_item(item)
+                renpy.say(narrator, self.name + " купил " + item.name)
+            else:
+                renpy.say(narrator, "Не хватает денег!")
+
+        def remove_item(self, item):
+            if item in self.weapon_list:
+                self.weapon_list.remove(item)
+            elif item in self.armor_list:
+                self.armor_list.remove(item)
+            elif item in self.item_list:
+                self.item_list.remove(item)
+            elif item in self.magic_item_list:
+                self.magic_item_list.remove(item)
+            elif item in self.shield_list:
+                self.shield_list.remove(item)
+
+        def sell_item(self, item):
+            self.remove_item(item)
+            self.money += item.cost
+            renpy.say(narrator, self.name + " продал " + item.name)
+
+        def equip_weapon(self, item):
+            if item.type not in self.weapon_banned:
+                self.weapon_list.append(self.weapon_current[0])
+                self.weapon_current.remove[0]
+                self.weapon_current.append(item)
+                self.weapon_list.remove(item)
+                self.damage_type = item.damage_type
+                self.damage = item.damage
+            else:
+                renpy.say(narrator, self.name + "не может пользоваться этим оружием!")
+        
+        
+
     
     class Warrior(Player):
-        def __init__(self, name, strength_default, agility_default, health_default, intellect_default, belovedweapon):
+        def __init__(self, name, strength_default, agility_default, health_default, intellect_default):
+            global round_count
+            global round_count_default
+
+            round_count = 2
+            round_count_default = 2
+
             self.name = str(name)
 
-            self.belovedweapon = belovedweapon
-
             self.strength_default = strength_default
-            self.strength = strength_default
             self.agility_default = agility_default
-            self.agility = agility_default
             self.health_default = health_default
             self.intellect_default = intellect_default
-            self.intellect = intellect_default
 
-            self.round_count = 2
+            self.restore_stats()
 
             self.hp_default = self.health_default * 4 + 4
-            self.hp = self.hp_default
+            self.restore_hp()
 
             self.mana_default = self.intellect_default
-            self.mana = self.mana_default
+            self.restore_mana()
         
 
         def defence_calc(self):
@@ -129,7 +281,7 @@ init python:
             if self.weapon_current[0] in self.belovedweapon:
                 self.defence += 2
 
-        def attack_rate(self, enemy):
+        def attack_rate(self):
             if self.strength == 1:
                 i = int(self.dice(2))
             elif self.strength == 2:
@@ -170,6 +322,18 @@ init python:
                 i += self.dice()
             return i
 
+        def attack(self, enemy):
+            if self.attack_rate() > enemy.defence:
+                renpy.with_statement(hpunch)
+                renpy.say(narrator, "Атака успешна.")
+            if self.weapon_current[0].damage_type in enemy.resistance:
+                renpy.say(narrator, "Но " + self.weapon_current[0].name + " не наносит урона. " + enemy.name + " не боится ударов этого оружия.")
+            else:    
+                enemy.hp -= self.currentweapon[0].damage
+                renpy.say(narrator, enemy.name + " теряет " + str(self.currentweapon[0].damage) + " ЖС.")
+                if enemy.hp <= 0:
+                    renpy.say(narrator, enemy.name + " убит!")
+
         def learn(self, spell):
             if super().learn(self, spell):
                 if self.dice() > 4:
@@ -197,18 +361,7 @@ init python:
             else:
                 self.round_count -= 1
 
-                """
-            if i > enemy.defence:
-                renpy.with_statement(hpunch)
-                renpy.say(narrator, "Атака успешна.")
-            if self.weapon_current[0].damage_type in enemy.resistance:
-                renpy.say(narrator, "Но " + self.weapon_current[0].name + " не наносит урона. " + enemy.name + " не боится ударов этого оружия.")
-            else:    
-                enemy.hp -= self.currentweapon[0].damage
-                renpy.say(narrator, enemy.name + " теряет " + str(self.currentweapon[0].damage) + " ЖС.")
-                if enemy.hp <= 0:
-                    renpy.say(narrator, enemy.name + " убит!")
-                    """
+
 
 
 
@@ -223,6 +376,30 @@ init python:
     
     class Shaman(Player):
         pass
+
+    class Enemy(Character):
+        damage_type = 'normal'
+        bonus = 0
+        size = 'normal'
+        damage = 0
+        
+        def attack_rate(self):
+            return 0
+        
+    
+    class Zombie(Enemy):
+        def __init__(self, name):
+            self.name = name
+            self.defence = 8
+            self.hp = 6
+            self.damage = 4
+            self.bonus = 5
+            self.resistance = ['song', 'death', 'illusion', 'poison', 'trans']
+
+        def attack_rate(self):
+            return self.dice(2, 1)
+        
+
 #Имя по-умолчанию
     name = 'Strannik'
 #Базовые характеристики
