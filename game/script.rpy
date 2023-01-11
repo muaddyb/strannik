@@ -7,10 +7,66 @@ define narrator = nvl_narrator
 init python:
     menu = nvl_menu
 
-    round_count = 1
-    round_count_default = 1
+# Глобальные атрибуты
+
+    class Gohan:
+        round_count_default = 1 #Максимальное значение номера хода. У всех 1, у воина будет 2
+        round_count = 1 #Текущее значение номера хода
+
+# Общий класс всех персонажей
 
     class Character:
+        # Инит всех объектов типа Персонаж.
+        # По-умолчанию передаётся отсылка к классу глобальных атрибутов
+        def __init__(self, globe=Gohan()):
+            self.globe = globe
+
+        # Броски кубика: принимает количество и доп. очки
+        # Каждый даёт случайное число от 1 до 6
+        # Возвращает сумму всех бросков и доп. очков
+        @staticmethod
+        def dice(n = 1, addition = 0):
+            x = 0
+            for i in range(n): 
+                x += renpy.random.randint(1,6)
+            return x + addition
+
+# Вызов значений глобальных атрибутов
+
+    # Даёт максимальное значение номера хода
+        @property
+        def round_count_default(self):
+            return self.globe.round_count_default
+        
+    # Даёт текущее значение номера хода
+        @property
+        def round_count(self):
+            return self.globe.round_count
+
+    # В начале бой определяет, чей ход первый. Следует вызывать от объекта игрока
+    # Первым ходит тот, чей бросок больше. Условно считаем бросок игрока x
+    # Игрок ходит, когда round_count > 0, поэтому при его победе выставляем равным round_count_default
+        def turn_define(self):
+            x = 0
+            y = 0
+            while x == y:
+                x = self.dice()
+                y = self.dice()
+            if x > y:
+                self.globe.round_count = self.round_count_default
+            else:
+                self.round_count = 0
+    
+    # После каждого раунда в бою вызывается эта функция, чтобы определить, чья очередь в следующем.
+    # Значение номера хода снижается. Если 0 (ходил враг), возвращается максимальное значение
+        def turn(self):
+            if self.round_count > 0:
+                self.globe.round_count -= 1
+            else:
+                self.globe.round_count = self.round_count_default
+
+# Атрибуты персонажа. Здесь указаны по-умолчанию. TO-DO: потом посмотреть, можно ли убрать
+
         name = 'Character'
         hp_default = 0
         hp = 0
@@ -25,39 +81,12 @@ init python:
         damage_type = 'normal'
         damage = 0
 
+    # Защита по-умолчанию и защита текущая. TO-DO: потом посмотреть, можно ли убрать
         defence_default = 0
         defence = 0
 
-        @staticmethod
-        def dice(n = 1, addition = 0):
-            x = 0
-            for i in range(n): 
-                x += renpy.random.randint(1,6)
-            return x + addition
         
-        def turn_define(self):
-            global round_count
-            global round_count_default
-            x = 0
-            y = 0
-            while x == y:
-                x = self.dice()
-                y = self.dice()
-            if x > y:
-                round_count = round_count_default
-            else:
-                round_count = 0
-        
-        def turn(self):
-            global round_count
-            global round_count_default
-            if self.ghost_status > 0:
-                self.ghost_status -= 1
-            if round_count == 0:
-                round_count = round_count_default
-            else:
-                round_count -= 1
-
+    # Проверяет жив ли персонаж по хп больше 0. Да — возвращает True, Нет — False и сообщение
         def isalive(self):
             if self.hp > 0:
                 return True
@@ -130,19 +159,28 @@ init python:
                 renpy.say(narrator, enemy.name + " не получает урона.")
                 return False
 
-        def fight_attack(self, enemy):
-            if self.hp > 0:
-                if self.status_attack_start_effect():
-                    renpy.say(narrator, self.name + " атакует.")
-                    if self.attack(enemy):
-                        if enemy.ghost_status_check():
-                            if enemy.stone_skin_status_check():
-                                if self.resistance_check(enemy):
-                                    enemy.hp -= self.damage
-                                    renpy.say(narrator, enemy.name + " получает урон " + str(self.damage) + " ЖС.")
-                                    if enemy.isalive():
-                                        enemy.armor_spell_status_check()
-                                        enemy.fire_skin_status_check(self)
+        def fight_weapon(self, enemy):
+            if self.status_attack_start_effect():
+                renpy.say(narrator, self.name + " атакует.")
+                if self.attack(enemy):
+                    if enemy.ghost_status_check():
+                        if enemy.stone_skin_status_check():
+                            if self.resistance_check(enemy):
+                                enemy.hp -= self.damage
+                                renpy.say(narrator, enemy.name + " получает урон " + str(self.damage) + " ЖС.")
+                                if enemy.isalive():
+                                    enemy.armor_spell_status_check()
+                                    enemy.fire_skin_status_check(self)
+        
+        def fight_magic(self, enemy, spell):
+            if self.status_attack_start_effect():
+                self.mana -= spell.mana_cost
+                renpy.say(narrator, self.name + " применяет заклинание " spell.name)
+                if spell.resistance_check():
+                    if enemy.stone_skin_status_check():
+                        spell.cast(self, enemy)
+                        if enemy.isalive():
+                            enemy.armor_spell_status_check()
                 
     class Player(Character):
         strength_default = 0
@@ -580,11 +618,109 @@ init python:
         def attack_rate(self):
             return (super().attack_rate() - self.dice())
 
-    class Spell():
-        def __init__(self, name, mana_cost, type):
-            self.name = name
-            self.manacost = manacost
-            self.type = type
+    class Magic_Damaging():
+        type = ''
+        name = ''
+        damage = 0
+        def __init__(self, mana_cost):
+            self.mana_cost = mana_cost
+        
+        def resistance_check(self, enemy):
+            if self.type not in enemy.resistance:
+                return True
+            else:
+                renpy.say(narrator, "Заклинание " + self.name + " не подействовало")
+
+    class Fire_Fingers(Magic_Damaging):
+        type = 'fire'
+        name = 'Огненные Пальцы'
+        damage = 5
+
+        def cast(self, player, enemy):
+            if self.resistance_check(enemy):
+                renpy.say(narrator, player.name + " касается противника пальцами, которые вспыхивают огнём.\n" + enemy.name + " получает урон 5 ЖС")
+                enemy.hp -= self.damage
+    
+    fire_fingers_spell = Fire_Fingers(5)
+
+    class Energy(Magic_Damaging):
+        type = 'energy'
+        name = 'Сгусток Энергии'
+        damage = 3
+        selected = []
+
+        def selection_display(self, band):
+            for i in band:
+                if i.hp > 0
+
+        def select(self, player, enemy):
+            player.mana -= self.mana_cost
+            self.selected.append(enemy)
+        
+        def cast(self):
+            for i in self.selected:
+                if i.resistance_check():
+                    i.hp -= self.damage
+                    renpy.say(narrator, i.name + " получил урон " + str(self.damage) + " ЖС")
+            self.selected.clear()
+        
+
+
+
+    energy_spell = Energy(3)
+
+    class Magic_StatChanging():
+        type = ''
+        name = ''
+
+        def __init__(self, mana_cost):
+            self.mana_cost = mana_cost
+
+    class Size_Change(Magic_StatChanging):
+        type = 'transformation'
+        name = 'Изменение Роста'
+
+        def cast(self, player, direction):
+            if direction == 'up':
+                player.strength = player.strength * 2
+                player.agility = player.agility // 2
+                player.defence_calc()
+                renpy.say(narrator, player.name + " увеличил свой рост. Сила выросла, а ловкость снизилась в 2 раза.")
+            else:
+                player.strengh = player.strengh // 2
+                player.agility = player.agility * 2
+                player.defence_calc()
+                renpy.say(narrator, player.name + " уменьшил свой рост. Ловкость увеличилась, а сила уменьшилась в 2 раза.")
+
+    size_change_spell = Size_Change(8)
+
+    class Armor(Magic_StatChanging):
+        type = 'transformation'
+        name = 'Волшебные Доспехи'
+        amount = 0
+        max_amount = 0
+
+        def cast(self, player):
+            self.max_amount = player.mana // self.mana_cost
+            string = "Сколько уровней поля создать?\nВведи число не более " + str(self.max_amount)
+            self.amount = renpy.input()
+            chck = True
+            try:
+                self.amount = int(self.amount)
+            except ValueError:
+                chck = False
+            if chck == True and self.amount <= self.max_amount and self.amount > 0:
+                player.mana -= self.mana_cost
+                player.defence += self.amount
+                player.armor_spell_status = self.amount
+                renpy.say(narrator, player.name + " создал вокруг себя силовое поле. Уровней — " + str(self.amount))
+            else:
+                renpy.say(narrator, "Неправильное значение")
+    
+    armor_spell = Armor(3)
+
+
+        
 
     class Enemy(Character):
         damage_type = 'normal'
@@ -607,819 +743,51 @@ init python:
 
         def attack_rate(self):
             return self.dice(2, 1)
-        
 
-#Имя по-умолчанию
-    name = 'Strannik'
-#Базовые характеристики
-    strength = 0
-    agility = 0
-    health = 0
-    intellect = 0
-#Основные параметры
-    character_class = ''
-    character_class_rus = ''
-#Производные параметры
-    hp = 0
-    hp_max = 0
-    mana = 0
-    mana_max = 0
-    defence = 0
-    belovedweapon = []
-    bannedweapon = []
-    status = []
-    resistance = []
-    armor_spell_count = 0
-    stone_skin_spell_count = 0
-    elementary_resistance_status = []
-#Текущие характеристики в бою
-    currenthpmax = hp_max
-    currentmanamax = mana_max
-    currentstr = strength
-    currentagi = agility
-    currenthlt = health
-    currentint = intellect
-#Цена за повышение основной харктеристики
-    strengthcost = 80
-    agilitycost = 90
-    healthcost = 90
-    intellectcost = 100
+######## Вещи ########
 
-#Функции
+#Оружие
 
-#Бросок шестигранного кубика
-    def dice(n = 1):
-        x = 0
-        for i in range(n): 
-            x += renpy.random.randint(1,6)
-        return(x)
-#Предметы
-    class Item:
-        def __init__(self, name, cost, ident):
-            self.name = name
-            self.cost = cost
-            self.ident = ident
-    class Weapon:
-        def __init__(self, name, cost, damage, dmgtype, ident):
+    class Weapon():
+        def __init__(self, name, cost, damage, damage_type, type):
             self.name = name
             self.cost = cost
             self.damage = damage
-            self.ident = ident
-            self.dmgtype = dmgtype
+            self.damage_type = damage_type
+            self.type = type
+
     dagger = Weapon('кинжал', 3, 3, 'normal', 'dagger')
     sword = Weapon('меч', 5, 4, 'normal', 'sword')
     heavy_sword = Weapon('тяжёлый меч', 10, 5, 'normal', 'heavy_sword')
     axe = Weapon('секира', 15, 6, 'normal', 'axe')
     magic_sword = Weapon('волшебный меч', 20, 6, 'energy', 'magic_sword')
+
+#Доспехи
+
     class Armor:
         def __init__(self, name, cost, defencebonus, ident):
             self.name = name
             self.cost = cost
             self.defencebonus = defencebonus
-            self.ident = ident
+            self.ident = type
+
     knight_armor = Armor('рыцарские доспехи', 30, 3, 'knight_armor')
+
+#
+
     class Shield:
         def __init__(self, name, cost, defencebonus, ident):
             self.name = name
             self.cost = cost
             self.defencebonus = defencebonus
-            self.ident = ident
+            self.ident = type
+
     class MagicItem:
         def __init__(self, name, cost, bonus, ident):
             self.name = name
             self.cost = cost
             self.bonus = bonus
-            self.ident = ident
-
-    class Inventory:
-        def __init__(self, money=6):
-            self.money = money
-            self.items = []
-            self.weaponset = []
-            self.armorset = []
-            self.magicitems = []
-            self.shieldset = []
-            self.currentshield = []
-            self.currentarmor = []
-            self.currentweapon = []
-
-        def buyitem(self, item):
-            if self.money >= item.cost:
-                self.money -= item.cost
-                self.items.append(item)
-                return True
-            else:
-                return False
-        def buyweapon(self, weapon):
-            if self.money >= weapon.cost:
-                self.money -= weapon.cost
-                self.weaponset.append(weapon)
-
-        def sellweapon(self, weapon):
-            if weapon in self.weaponset:
-                self.money += weapon.cost
-                self.weaponset.remove(weapon)
-        def sellarmor(self, armor):
-            if armor in self.armorset:
-                self.money += armor.cost
-                self.armorset.remove(armor)
-        def sellitem(self, item):
-            if item in self.items:
-                self.money += item.cost
-                self.items.remove(item)
-        def sellmagicitem(self, magicitem):
-            if magicitem in self.magicitems:
-                self.money += magicitem.cost
-                self.magicitems.remove(magicitem)
-
-        def additem(self, item):
-            self.items.append(item)
-        def addweapon(self, weapon):
-            self.weaponset.append(weapon)
-        def addshield(self, shield):
-            self.shieldset.append(shield)
-        def addarmor(self, armor):
-            self.armorset.append(shield)
-
-        def equiparmor(self, armor):
-            if len(self.currentarmor):
-                self.armorset.append(self.currentarmor[0])
-                self.currentarmor.remove[0]
-            self.currentarmor.append(armor)
-            self.armorset.remove(armor)
-
-        def equipshield(self, shield):
-            if len(self.currentshield):
-                self.shieldset.append(self.currentshield[0])
-                self.currentshield.remove[0]
-            self.currentshield.append(shield)
-            self.shieldset.remove(shield)
-
-        def equipweapon(self, weapon):
-            if len(self.currentweapon):
-                self.weaponset.append(self.currentweapon)
-                self.currentweapon.remove[0]
-            self.currentweapon.append(weapon)
-            self.weaponset.remove(weapon)
-
-    backpack = Inventory()
-
-    
-
-#Заклинания
-    class Spell:
-        def __init__(self, name, manacost, type, ident):
-            self.name = name
-            self.manacost = manacost
-            self.type = type
-            self.ident = ident
-    class SpellsKnown:
-        def __init__(self):
-            self.spells = []
-        def learnspell(self, spell):
-            if learn() == True:
-                if spell in self.spells:
-                    return(False)
-                else:
-                    self.spells.append(spell)
-                    return(True)
-            else:
-                return(False)
-        def addspell(self, spell):
-            self.spells.append(spell)
-    
-    spellbook = SpellsKnown()
-    fire_fingers_spell = Spell('Огненные Пальцы', 5, 'fire', 'fire_fingers_spell')
-    size_change_spell = Spell('Изменение Роста', 8, 'trans', 'size_change_spell')
-    armor_spell = Spell('Волшебные Доспехи', 3, 'energy', 'armor_spell')
-    energy_spell = Spell('Сгусток Энергии', 3, 'energy', 'energy_spell')
-    noose_spell = Spell('Удавка', 10, 'energy', 'noose_spell')
-    poisoned_spear_spell = Spell('Отравленное Копьё', 5, 'poison', 'poisoned_spear_spell')
-    ghost_spell = Spell('Привидение', 15, 'trans', 'ghost_spell')
-    fireball_spell = Spell('Огненный Шар', 6, 'fire', 'fireball_spell')
-    vampire_spell = Spell('Энергетический Вампиризм', 3, 'death', 'vampire_spell')
-    lightning_spell = Spell('Молния', 6, 'lightning', 'lightning_spell')
-    lightning_chain_spell = Spell('Молния-цепочка', 7, 'lightning', 'lightning_chain_spell')
-    stone_skin_spell = Spell('Каменная Кожа', 5, 'stone', 'stone_skin_spell')
-    ice_storm_spell = Spell('Ледяной Смерч', 8, 'ice', 'ice_storm_spell')
-    transmutation_spell = Spell('Превращение', 25, 'trans', 'transmutation_spell')
-    fire_skin_spell = Spell('Огненная Кожа', 15, 'fire', 'fire_skin_spell')
-    healing_spell = Spell('Врачевание Ран', 3, 'energy', 'healing_spell')
-    elementary_resistance_spell = Spell('Защита От Стихийных Сил', 1, 'energy', 'elementary_resistance_spell')
-    healing_acceleration_spell = Spell('Ускоренное Заживление Ран', 2, 'energy', 'healing_acceleration_spell')
-    false_death_spell = Spell('Ложная Смерть', 25, 'illusion', 'false_death_spell')
-    death_spell = Spell('Смерть', 45, 'death', 'death_spell')
-
-    peace_song_spell = Spell('Песня Мира', 5, 'song', 'peace_song_spell')
-    lullaby_song_spell = Spell('Песня Сна', 8, 'song', 'lullaby_song_spell')
-    dead_fear_song_spell = Spell('Песня Изгнания Мёртвых', 10, 'holy', 'dead_fear_song_spell')
-    pain_song_spell = Spell('Песн Боли', 12, 'song', 'pain_song_spell')
-
-    death_ring_spell = Spell('Символ Смерти (Перстень Смерти)', 0, 'death', 'death_ring_spell')
-
-#Противники
-    class Enemy:
-        def __init__(self, name, attack, defence, hp, damage, damagetype, bonus, resistance, status, size, ident):
-            self.name = name
-            self.attack = attack
-            self.defence = defence
-            self.hp = hp
-            self.damage = damage
-            self.damagetype = damagetype
-            self.bonus = bonus
-            self.resistance = resistance
-            self.status = status
-            self.ident = ident
-            self.size = size
-    class EnemyGroup:
-        def __init__(self):
-            self.band = []
-        def addenemy(self, enemy):
-            self.band.append(enemy)
-        def killenemy(self, enemy):
-            self.band.remove(enemy)
-    enemies = EnemyGroup()
-#База противников
-    def zombie_attack():
-        global defence
-        global status
-        global narrator
-        global name
-        r = True
-        for i in status:
-            if 'ghost' in i:
-                if i[1] > 0:
-                    renpy.say(narrator, name + " не боится атак обычным оружием.")
-                    r = False
-                    break
-        if r == True:
-            x = dice(2) + 1
-            if x > defence:
-                return(True)
-            else:
-                return(False)
-        else:
-            return(False)
-            
-    zombie = Enemy('Зомби', zombie_attack(), 8, 6, 4, 'normal', 5, ['song', 'death', 'illusion', 'poison', 'trans'], [], 'normal','zombie')
-
-    def skeleton_knight_attack():
-        global defence
-        global status
-        r = 0
-        for i in status:
-            if 'ghost' in i:
-                r = 1
-        if r == 0:
-            x = dice(2) + 1
-            if x > defence:
-                return(True)
-            else:
-                return(False)
-        else:
-            return(False)
-    
-    skeleton_knight = Enemy('Всадник-скелет', skeleton_knight_attack(), 8, 7, 5, 'normal', 6, ['song', 'death', 'illusion', 'poison', 'trans'], [], 'normal', 'skeleton_knight')
-    
-    def ghost_attack():
-        global defence
-        global status
-        r = 0
-        for i in status:
-            if 'ghost' in i:
-                r = 1
-        if r == 0:
-            x = dice(3) + 1
-            if x > defence:
-                return(True)
-            else:
-                return(False)
-        else:
-            return(False)
-    def ghost_damage():
-        x = dice()
-        return(x)
-    
-    ghost = Enemy('Привидение', ghost_attack, 12, 14, ghost_damage(), 'death', 15, ['song', 'death', 'illusion', 'poison', 'normal', 'trans'], [], 'normal', 'ghost')
-
-    def death_knight_attack():
-        global defence
-        global status
-        r = 0
-        for i in status:
-            if 'ghost' in i:
-                r = 1
-        if r == 0:
-            x = dice(3) + 4
-            if x > defence:
-                return(True)
-            else:
-                return(False)
-        else:
-            return(False)
-    
-    death_knight = Enemy('Рыцарь Смерти', death_knight_attack(), 15, 26, 6, 'normal', 25, ['song', 'fire', 'death', 'trans', 'holy'], [], 'normal', 'death_knight')
-
-    def vampire_attack():
-        global defence
-        global resistance
-        global currenthlt
-        r = 0
-        for i in resistance:
-            if 'death' in i:
-                r = 1
-        if r == 0:
-            x = dice(3) + 3
-            if x > defence:
-                probe = dice()
-                if probe == 6 or probe > currenthlt:
-                    currenthlt -= 1
-                    return(True)
-                else:
-                    return(False)
-            else:
-                return(False)
-        else:
-            return(False)
-    
-    vampire = Enemy('Вампир', vampire_attack(), 15, 28, 5, 'death', 28, ['normal', 'death'], [], 'normal', 'vampire')
-    enemy0 = Enemy('Вампир', vampire_attack(), 15, 28, 5, 'death', 28, ['normal', 'death'], [], 'normal', 'vampire')
-    enemy1 = Enemy('Вампир', vampire_attack(), 15, 28, 5, 'death', 28, ['normal', 'death'], [], 'normal', 'vampire')
-    enemy2 = Enemy('Вампир', vampire_attack(), 15, 28, 5, 'death', 28, ['normal', 'death'], [], 'normal', 'vampire')
-    currentenemy = Enemy('Вампир', vampire_attack(), 15, 28, 5, 'death', 28, ['normal', 'death'], [], 'normal', 'vampire')
-    
-    def return_fight():
-        global currentenemy
-        global enemyband
-        for i in enemyband.band:
-            if i.ident == currentenemy.ident:
-                i = currentenemy
-                break
-        
-        
-
-
-
-    def hp_max_def(): #Определение максимального значения жизненных сил
-        global hp_max
-        global health
-        global currenthpmax
-        hp_max = ((health * 4) + 4)
-        currenthpmax = hp_max
-
-    def attack(enemy): #Определение значения атаки в бою
-        global character_class
-        global currentagi
-        global currentstr
-        global backpack
-        global belovedweapon
-        if character_class == 'thief' and currentagi > 9:
-            if currentstr == 1:
-                i = int(dice(4))
-            elif currentstr == 2:
-                i = int(dice(4) + 4)
-            elif currentstr == 3:
-                i = int(dice(4) + 8)
-            elif currentstr == 4:
-                i = int(dice(6))
-            elif currentstr == 5:
-                i = int(dice(6) + 4)
-            elif currentstr == 6:
-                i = int(dice(6) + 8)
-            elif currentstr == 7:
-                i = int(dice(8))
-            elif currentstr == 8:
-                i = int(dice(8) + 4)
-            elif currentstr == 9:
-                i = int(dice(8) + 8)
-            elif currentstr == 10:
-                i = int(dice(10))
-            elif currentstr == 11:
-                i = int(dice(10) + 4)
-            elif currentstr == 12:
-                i = int(dice(10) + 8)
-            elif currentstr == 13:
-                i = int(dice(11))
-            elif currentstr == 14:
-                i = int(dice(11) + 4)
-            elif currentstr == 15:
-                i = int(dice(11) + 8)
-            elif currentstr == 16:
-                i = int(dice(12))
-            elif currentstr == 17:
-                i = int(dice(12) + 4)
-            elif currentstr == 18:
-                i = int(dice(12) + 8)
-        elif character_class == 'shaman':
-            if currentstr == 1:
-                i = int(dice())
-            elif currentstr == 2:
-                i = int(dice() + 2)
-            elif currentstr == 3:
-                i = int(dice() + 4)
-            elif currentstr == 4:
-                i = int(dice(2))
-            elif currentstr == 5:
-                i = int(dice(2) + 2)
-            elif currentstr == 6:
-                i = int(dice(2) + 4)
-            elif currentstr == 7:
-                i = int(dice(3))
-            elif currentstr == 8:
-                i = int(dice(3) + 2)
-            elif currentstr == 9:
-                i = int(dice(3) + 4)
-            elif currentstr == 10:
-                i = int(dice(4))
-            elif currentstr == 11:
-                i = int(dice(4) + 2)
-            elif currentstr == 12:
-                i = int(dice(4) + 4)
-            elif currentstr == 13:
-                i = int(dice(5))
-            elif currentstr == 14:
-                i = int(dice(5) + 2)
-            elif currentstr == 15:
-                i = int(dice(5) + 4)
-            elif currentstr == 16:
-                i = int(dice(6))
-            elif currentstr == 17:
-                i = int(dice(6) + 2)
-            elif currentstr == 18:
-                i = int(dice(6) + 4)
-        else:
-            if currentstr == 1:
-                i = int(dice(2))
-            elif currentstr == 2:
-                i = int(dice(2) + 2)
-            elif currentstr == 3:
-                i = int(dice(2) + 4)
-            elif currentstr == 4:
-                i = int(dice(3))
-            elif currentstr == 5:
-                i = int(dice(3) + 2)
-            elif currentstr == 6:
-                i = int(dice(3) + 4)
-            elif currentstr == 7:
-                i = int(dice(4))
-            elif currentstr == 8:
-                i = int(dice(4) + 2)
-            elif currentstr == 9:
-                i = int(dice(4) + 4)
-            elif currentstr == 10:
-                i = int(dice(5))
-            elif currentstr == 11:
-                i = int(dice(5) + 2)
-            elif currentstr == 12:
-                i = int(dice(5) + 4)
-            elif currentstr == 13:
-                i = int(dice(6))
-            elif currentstr == 14:
-                i = int(dice(6) + 2)
-            elif currentstr == 15:
-                i = int(dice(6) + 4)
-            elif currentstr == 16:
-                i = int(dice(7))
-            elif currentstr == 17:
-                i = int(dice(7) + 2)
-            elif currentstr == 18:
-                i = int(dice(7) + 4)
-        if character_class == 'warrior' and (backpack.currentweapon[0] in belovedweapon):
-            i += int(dice())
-        if i > enemy.defence:
-            renpy.with_statement(hpunch)
-            renpy.say(narrator, "Атака успешна.")
-            if backpack.currentweapon[0].dmgtype in enemy.resistance:
-                renpy.say(narrator, "Но " + backpack.currentweapon[0].name + " не наносит урона. " + enemy.name + " не боится ударов обычного оружия.")
-            else:    
-                enemy.hp -= backpack.currentweapon[0].damage
-                renpy.say(narrator, enemy.name + " теряет " + str(backpack.currentweapon[0].damage) + " ЖС.")
-                if enemy.hp <= 0:
-                    renpy.say(narrator, enemy.name + " убит!")
-                    enemyband.killenemy(enemy)
-            
-        return(i)
-    def defence_calc(): #Определение базового значения защиты
-        global defence
-        global currentagi
-        global backpack
-        defence = currentagi + 7
-        if len(backpack.currentarmor):
-            defence += backpack.currentarmor[0].defencebonus
-        if len(backpack.currentshield):
-            defence += backpack.currentshield[0].defencebonus
-        if character_class == 'warrior' and backpack.currentweapon[0] in belovedweapon:
-            defence += 2
-
-    def trick(x): #Определение значения воровского ума при воровстве
-        global character_class
-        if character_class == 'thief':
-            if x == 1:
-                i = int(dice())
-            elif x == 2:
-                i = int(dice() + 2)
-            elif x == 3:
-                i = int(dice() + 4)
-            elif x == 4:
-                i = int(dice(2))
-            elif x == 5:
-                i = int(dice(2) + 2)
-            elif x == 6:
-                i = int(dice(2) + 4)
-            elif x == 7:
-                i = int(dice(3))
-            elif x == 8:
-                i = int(dice(3) + 2)
-            elif x == 9:
-                i = int(dice(3) + 4)
-            elif x == 10:
-                i = int(dice(4))
-            elif x == 11:
-                i = int(dice(4) + 2)
-            elif x == 12:
-                i = int(dice(4) + 4)
-            elif x == 13:
-                i = int(dice(5))
-            elif x == 14:
-                i = int(dice(5) + 2)
-            elif x == 15:
-                i = int(dice(5) + 4)
-            elif x == 16:
-                i = int(dice(6))
-            elif x == 17:
-                i = int(dice(6) + 2)
-            elif x == 18:
-                i = int(dice(6) + 4)
-        elif character_class == 'bard':
-            if x == 4:
-                i = int(dice())
-            elif x == 5:
-                i = int(dice() + 2)
-            elif x == 6:
-                i = int(dice() + 4)
-            elif x == 7:
-                i = int(dice(2))
-            elif x == 8:
-                i = int(dice(2) + 2)
-            elif x == 9:
-                i = int(dice(2) + 4)
-            elif x == 10:
-                i = int(dice(3))
-            elif x == 11:
-                i = int(dice(3) + 2)
-            elif x == 12:
-                i = int(dice(3) + 4)
-            elif x == 13:
-                i = int(dice(4))
-            elif x == 14:
-                i = int(dice(4) + 2)
-            elif x == 15:
-                i = int(dice(4) + 4)
-            elif x == 16:
-                i = int(dice(5))
-            elif x == 17:
-                i = int(dice(5) + 2)
-            elif x == 18:
-                i = int(dice(5) + 4)
-        return(i)
-    def mana_max_def(): #Определение максимального значения магической энергии
-        global intellect
-        global mana_max
-        global character_class
-        global currentmanamax
-        if character_class == 'warrior':
-            mana_max = intellect
-        elif character_class == 'thief':
-            if intellect == 1:
-                mana_max = 2
-            elif intellect == 2:
-                mana_max = 3
-            elif intellect == 3:
-                mana_max = 5
-            elif intellect == 4:
-                mana_max = 6
-            elif intellect == 5:
-                mana_max = 8
-            elif intellect == 6:
-                mana_max = 9
-            elif intellect == 7:
-                mana_max = 11
-            elif intellect == 8:
-                mana_max = 12
-            elif intellect == 9:
-                mana_max = 14
-            elif intellect == 10:
-                mana_max = 15
-            elif intellect == 11:
-                mana_max = 17
-            elif intellect == 12:
-                mana_max = 18
-            elif intellect == 13:
-                mana_max = 20
-            elif intellect == 14:
-                mana_max = 21
-            elif intellect == 15:
-                mana_max = 23
-            elif intellect == 16:
-                mana_max = 24
-            elif intellect == 17:
-                mana_max = 26
-            elif intellect == 18:
-                mana_max = 27
-        elif character_class == 'bard':
-            mana_max = intellect * 2
-        elif character_class == 'shaman':
-            if intellect > 2:
-                mana_max = (intellect - 2) * 4
-            else:
-                mana_max = 2
-        currentmanamax = mana_max
-
-    def learn():
-        global character_class
-        l = dice()
-        if character_class == 'warrior':
-            if l > 4:
-                return(True)
-            else:
-                return(False)
-        if character_class == 'thief':
-            if l > 3:
-                return(True)
-            else:
-                return(False)
-        if character_class == 'bard':
-            if l > 2:
-                return(True)
-            else:
-                return(False)
-        if character_class == 'shaman':
-            return(True)
-    def cast(spell):
-        global mana
-        if spell.manacost >= mana:
-            return(True)
-        else:
-            return(False)
-    def defaultstats():
-        global strength
-        global agility
-        global health
-        global intellect
-        global currentstr
-        global currentagi
-        global currenthlt
-        global currentint
-        global currenthpmax
-        global currentmanamax
-        global hp_max
-        global mana_max
-        currentstr = strength
-        currentagi = agility
-        currenthlt = health
-        currentint = intellect
-        currenthpmax = hp_max
-        currentmanamax = mana_max
-    rnd = 0
-    def turn_def():
-        global rnd
-        global character_class
-        if character_class == 'thief':
-            rnd = 1
-        else:
-            x = 0
-            y = 0
-            while x == y:
-                x = dice()
-                y = dice()
-            if x > y:
-                if character_class == 'warrior':
-                    rnd = 2
-                else:
-                    rnd = 1
-            else:
-                rnd = 0
-    def turn():
-        global rnd
-        global character_class
-        global ghost_status
-        if rnd == 0:
-            if character_class == 'warrior':
-                rnd = 2
-            else:
-                rnd = 1
-        else:
-            rnd -= 1
-        if ghost_status > 0:
-            ghost_status -= 1
-
-    def enoughmana():
-        global currentenemy
-        global spellbook
-        global mana
-        for i in spellbook.spells:
-            if mana >= i.manacost:
-                return(True)
-                break
-            else:
-                return(False)
-    def fight_defend():
-        global enemyband
-        global name
-        global defence
-        global armor_spell_count
-        global hp
-        global narrator
-        global ghost_status
-        for i in enemyband.band:
-            if i.hp > 0:
-                if ['noose'] in i.status:
-                    i.hp -= 1
-                    renpy.say(narrator, "Невидимая удавка на шее врага причиняет урон. " + i.name + " теряет 1 ЖС.")
-                    if i.hp <= 0:
-                        renpy.say(narrator, i.name + " убит!")
-            if i.hp > 0:
-                if ['poison'] in i.status:
-                    i.hp -= 3
-                    renpy.say(narrator, i.name + " теряет 3 ЖС от яда.")
-                    if i.hp <= 0:
-                        renpy.say(narrator, i.name + " убит!")
-            if i.hp > 0:
-                renpy.say(narrator, i.name + " атакует")
-                atk = i.attack
-                if atk > defence:
-                    if ghost_status > 0:
-                        renpy.say(narrator, name + " не получает урона, благодаря действию заклинания Привидение.")
-                    else:
-                        if stone_skin_spell_count == 0:
-                            hp -= i.damage
-                            renpy.with_statement(vpunch)
-                            renpy.say(narrator, i.name + " успешно атаковал " + name + " и нанёс урон " + str(i.damage) + ".")
-                            if hp <= 0:
-                                renpy.say(narrator, name + " убит!")
-                                renpy.jump(game_over)
-                            elif armor_spell_count > 0:
-                                armor_spell_count -= 1
-                                defence -= 1
-                                if armor_spell_count > 0:
-                                    renpy.say(narrator, "Силовое поле пробито. Защита снижена до " + str(defence) + ". Осталось уровней — " + str(armor_spell_count))
-                                elif armor_spell_count == 0:
-                                    renpy.say(narrator, "Силовое поле уничтожено. Защита снижена до " + str(defence) + ".")
-                        else:
-                            renpy.with_statement(vpunch)
-                            stone_skin_spell_count -= 1
-                                if stone_skin_spell_count > 0:
-                                    renpy.say(narrator, name + " не получает урона. Удар разрушает каменную кожу. Осталось слоёв — " + str(stone_skin_spell_count) + ".")
-                                else:
-                                    renpy.say(narrator, name + " не получает урона. Удар разрушает последний слой каменной кожи.")
-                        if fire_skin_spell_status == True:
-                            if 'fire' not in i.resistance:
-                                i.hp -= 5
-                                renpy.with_statement(hpunch)
-                                renpy.say(narrator, i.name + " получает урон 5 ЖС от огня.")
-                else:
-                    renpy.say(narrator, "[name] отразил атаку.")
-        
-            
-
-    # def energy_spell_cast():
-    #     global enemyband
-    #     global energy_spell
-    #     global mana
-    #     global narrator
-    #     global select
-    #     x = True
-    #     while x == True:
-    #         if mana < energy_spell.manacost:
-    #             renpy.say(narrator, "Не хватает магическй энергии.")
-    #             x = False
-    #             renpy.return_statement
-    #         else:
-    #             renpy.say(narrator, "Каждый встрел тратит " + str(energy_spell.manacost) + " МЭ. У тебя " + str(mana) + " МЭ. В кого направить сгусток энергии?")
-    #             select = [("Ни в кого, вернуться", renpy.return_statement)]
-    #             for i in enemyband.band:
-    #                 select.append((i.name + " (" + str(i.hp) + " ЖС)", "$ energy_spell_cast_process(i)"))
-    #             result = renpy.display_menu(select)
-    
-    # def energy_spell_cast_process(i):
-    #     global mana
-    #     global energy_spell
-    #     global enemyband
-    #     global narrator
-    #     mana -= energy_spell.manacost
-    #     if energy_spell.type in i.resistance:
-    #         renpy.say(narrator, "Заклинание не подействовало. " + i.name + "не боится воздействия энергии.")
-    #     else:
-    #         i.hp -= 3
-    #         renpy.say(narrator, i.name + " теряет 3 ЖС.")
-    #         if i.hp <= 0:
-    #             renpy.say(narrator, i.name + " убит!")
-
-
-
-
-
-
+            self.ident = type
 
 # The game starts here.
 # screen simple_example_inventory:
