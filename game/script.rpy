@@ -93,10 +93,12 @@ init python:
             else:
                 renpy.say(narrator, self.name + " мёртв.")
                 return False
-        
+
+    # Значение атаки. У персонажей, у которых она есть, определяется в производном классе    
         def attack_rate(self):
             return 0
 
+    # Определение, успешна ли атака: больше ли значение атаки, чем защита протиника
         def attack(self, enemy):
             if self.attack_rate() > enemy.defence:
                 renpy.say(narrator, self.name + " атакует успешно.")
@@ -104,16 +106,18 @@ init python:
             else:
                 renpy.say(narrator, self.name + " промахивается.")
                 return False
-        
+
+    # Проверка на различные действия, которые проявляются в начале хода.    
         def status_attack_start_effect(self):
-            if self.noose_status:
+            if self.noose_status: # Заклинание Удавка наносит урон 1 ЖС
                 self.hp -= 1
                 renpy.say(narrator, self.name + " теряет 1 ЖС от невидимой удавки на шее.")
-            if self.poison_status:
+            if self.poison_status: # Яд наносит урон 3 ЖС
                 self.hp -= 3
                 renpy.say(narrator, self.name + " теряет 3 ЖС от яда.")
-            return self.isalive()
-        
+            return self.isalive() # Проверка, жив ли персонаж
+
+    # Проверка действия заклинания Каменная кожа. Если есть, понижается его уровень.    
         def stone_skin_status_check(self):
             if self.stone_skin_status == 0:
                 return True
@@ -125,7 +129,9 @@ init python:
                 self.stone_skin_status -= 1
                 renpy.say(narrator, "Каменная кожа разрушается, поглощая весь урон.")
                 return False
-        
+
+        # Проверка действия заклинания Призрак. Если да, противник не получит уровна от оружия
+        # TO-DO: возможен урон не только обычным оружием
         def ghost_status_check(self):
             if self.ghost_status > 0:
                 renpy.say(narrator, self.name + " не получает урона, благодаря действию заклинания Привидение.")
@@ -133,6 +139,8 @@ init python:
             else:
                 return True
         
+        # Проверка действия заклинания энергетическая защита (силовое поле).
+        # TO-DO: Проверить, прописано ли понижение защиты вслед за уровнем силового поля.
         def armor_spell_status_check(self):
             if self.armor_spell_status > 1:
                 self.armor_spell_status -= 1
@@ -140,7 +148,9 @@ init python:
             if self.armor_spell_status == 1:
                 self.armor_spell_status -= 1
                 renpy.say(narrator, "Силовое поле пробито. Защита снижена.")
-            
+
+        # Проверка действия заклинания Огненная Кожа. Если да, атакующий получит урон от огня.
+        # TO-DO: проверить, не нужно ли поменять self на enemy    
         def fire_skin_status_check(self, enemy):
             if self.fire_skin_status == True:
                 renpy.say(narrator, enemy.name + " испытывает жар огненной кожи.")
@@ -152,6 +162,7 @@ init python:
                 else:
                     renpy.say(narrator, enemy.name + " не получает урона от огня.")
         
+        # Проверка иммунитета от типа урона.
         def resistance_check(self, enemy):
             if self.damage_type not in enemy.resistance:
                 return True
@@ -159,14 +170,15 @@ init python:
                 renpy.say(narrator, enemy.name + " не получает урона.")
                 return False
 
+        # Процесс атаки обычным оружием
         def fight_weapon(self, enemy):
-            if self.status_attack_start_effect():
+            if self.status_attack_start_effect(): # Проверка эффектов в начале раунда. Если остаётся жив, атака начинается.
                 renpy.say(narrator, self.name + " атакует.")
-                if self.attack(enemy):
-                    if enemy.ghost_status_check():
-                        if enemy.stone_skin_status_check():
-                            if self.resistance_check(enemy):
-                                enemy.hp -= self.damage
+                if self.attack(enemy): # Если значение атаки больше защиты проитвника
+                    if enemy.ghost_status_check(): #
+                        if enemy.stone_skin_status_check(): #
+                            if self.resistance_check(enemy): #
+                                enemy.hp -= self.damage #
                                 renpy.say(narrator, enemy.name + " получает урон " + str(self.damage) + " ЖС.")
                                 if enemy.isalive():
                                     enemy.armor_spell_status_check()
