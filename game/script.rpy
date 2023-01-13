@@ -785,7 +785,7 @@ init python:
 
 label start:
     hide main_menu
-    $ hero = Warrior()
+    $ hero = Warrior() #тестовое создание персонажа
     $ hero.strength_default = 5
     $ hero.agility_default = 4
     $ hero.intellect_default =2
