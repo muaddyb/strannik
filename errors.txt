@@ -2,13 +2,9 @@
 errors listed below, and try again.
 
 
-File "game/script.rpy", line 1741: expected statement.
-    mana -= lightning_spell.manacost * lightning_spell_amount
-          ^
+File "game/script.rpy", line 639: invalid syntax
+                if i.hp > 0
+    
 
-File "game/script.rpy", line 1750: expected statement.
-    turn()
-          ^
-
-Ren'Py Version: Ren'Py 8.0.2.22081402
-Sun Aug 28 00:34:24 2022
+Ren'Py Version: Ren'Py 8.0.3.22090809
+Sat Jan 14 00:30:56 2023

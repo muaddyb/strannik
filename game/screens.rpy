@@ -1518,16 +1518,16 @@ screen character_screen():
     frame xalign 1 ypos 0.01 xpos 0.009:
         vbox:
             xminimum 200
-            text "[name]"
-            text "[character_class_rus]"
+            text "[hero.name]"
+            text " тут будет класс "
             image "images/shaman.png"
             null height 10
             hbox:
                 vbox:
                     xminimum 100
-                    text "{color=#c35d5d}[hp] / [currenthpmax] ЖС {/color}|" 
+                    text "{color=#c35d5d}[hero.hp] / [hero.hp_default] ЖС {/color}|" 
                 vbox:
-                    text "| {color=#7f60e2}[mana] / [currentmanamax] МЭ{/color}"
+                    text "| {color=#7f60e2}[hero.mana] / [hero.mana_default] МЭ{/color}"
             null height 10
             hbox:
                 vbox:
@@ -1535,48 +1535,48 @@ screen character_screen():
                     text "Сила"
                 vbox:
                     xalign 0.0
-                    text "[currentstr]"
+                    text "[hero.strength]"
             hbox:
                 vbox:
                     xminimum 160
                     text "Ловкость"
                 vbox:
-                    text "[currentagi]"
+                    text "[hero.agility]"
             hbox:
                 vbox:
                     xminimum 160
                     text "Здоровье"
                 vbox:
-                    text "[currenthlt]"
+                    text "[hero.health]"
             hbox:
                 vbox:
                     xminimum 160
                     text "Интеллект"
                 vbox:
-                    text "[currentint]"
+                    text "[hero.intellect]"
             null height 10
             hbox:
                 vbox:
                     xminimum 160
-                    text "[backpack.currentweapon[0].name]"
+                    text "[hero.weapon_current[0].name]"
                 vbox:
-                    text "[backpack.currentweapon[0].damage]"
+                    text "[hero.damage]"
             null height 10
             hbox:
                 vbox:
                     xminimum 160
                     text "Защита"
                 vbox:
-                    text "[defence]"
-            hbox:
-                vbox:
-                    if len(backpack.currentarmor):
-                        text "[backpack.currentarmor[0].name]"
-                        text "[backpack.currentarmor[0].defencebonus]"
-                vbox:
-                    if len(backpack.currentshield):
-                        text "[backpack.currentshield[0].name]"
-                        text "[backpack.currentshield[0].defencebonus]"
+                    text "[hero.defence]"
+#            hbox:
+#                vbox:
+#                    if len(backpack.currentarmor):
+#                        text "[backpack.currentarmor[0].name]"
+#                        text "[backpack.currentarmor[0].defencebonus]"
+#                vbox:
+#                    if len(backpack.currentshield):
+#                        text "[backpack.currentshield[0].name]"
+#                        text "[backpack.currentshield[0].defencebonus]"
 
 screen worldmap():
     imagemap:
