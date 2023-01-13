@@ -809,3 +809,5 @@ label start:
         while len(band):
             hero.turn_start(band)
 
+label game_over:
+    "Game over"
