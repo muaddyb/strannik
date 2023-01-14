@@ -7,19 +7,9 @@ define narrator = nvl_narrator
 init python:
     menu = nvl_menu
 
-# Глобальные атрибуты
-
-    class Gohan:
-        round_count_default = 1 #Максимальное значение номера хода. У всех 1, у воина будет 2
-        round_count = 1 #Текущее значение номера хода
-
 # Общий класс всех персонажей
 
     class Character:
-        # Инит всех объектов типа Персонаж.
-        # По-умолчанию передаётся отсылка к классу глобальных атрибутов
-        def __init__(self, globe=Gohan()):
-            self.globe = globe
 
         # Броски кубика: принимает количество и доп. очки
         # Каждый даёт случайное число от 1 до 6
@@ -30,40 +20,6 @@ init python:
             for i in range(n): 
                 x += renpy.random.randint(1,6)
             return x + addition
-
-# Вызов значений глобальных атрибутов
-
-    # Даёт максимальное значение номера хода
-        @property
-        def round_count_default(self):
-            return self.globe.round_count_default
-        
-    # Даёт текущее значение номера хода
-        @property
-        def round_count(self):
-            return self.globe.round_count
-
-    # В начале бой определяет, чей ход первый. Следует вызывать от объекта игрока
-    # Первым ходит тот, чей бросок больше. Условно считаем бросок игрока x
-    # Игрок ходит, когда round_count > 0, поэтому при его победе выставляем равным round_count_default
-        def turn_define(self):
-            x = 0
-            y = 0
-            while x == y:
-                x = self.dice()
-                y = self.dice()
-            if x > y:
-                self.globe.round_count = self.round_count_default
-            else:
-                self.globe.round_count = 0
-    
-    # После каждого раунда в бою вызывается эта функция, чтобы определить, чья очередь в следующем.
-    # Значение номера хода снижается. Если 0 (ходил враг), возвращается максимальное значение
-        def round(self):
-            if self.round_count > 0:
-                self.globe.round_count -= 1
-            else:
-                self.globe.round_count = self.round_count_default
 
 # Атрибуты персонажа. Здесь указаны по-умолчанию. TO-DO: потом посмотреть, можно ли убрать
 
@@ -184,12 +140,6 @@ init python:
                 enemy.armor_spell_status_check()
                 enemy.fire_skin_status_check(self)
 
-        
-
-
-
-
-        
         def fight_magic(self, enemy, spell):
             if self.status_attack_start_effect():
                 self.mana -= spell.mana_cost
@@ -201,18 +151,6 @@ init python:
                             enemy.armor_spell_status_check()
                 
     class Player(Character):
-        strength_default = 0
-        strength = 0
-        agility_default = 0
-        agility = 0
-        health_default = 0
-        health = 0
-        intellect_default = 0
-        intellect = 0
-
-        hp_default = 0
-        mana_default = 0
-
         money = 0
         weapon_list = []
         armor_list = []
@@ -224,24 +162,62 @@ init python:
         armor_current = []
         weapon_banned = []
         spellbook = []
+        mana = 0
+        mana_default = 0
+        hp = 0
+        hp_default = 0
 
         belovedweapon = []
 
+        round_count_default = 1
+        round_count = 1
+
+        strength_default = 0
+        strength = 0
+        agility_default = 0
+        agility = 0
+        health_default = 0
+        health = 0
+        intellect_default = 0
+        intellect = 0
+
+        def __init__(self, name, strength_default, agility_default, health_default, intellect_default):
+            self.name = name
+            self.strength_default = strength_default
+            self.agility_default = agility_default
+            self.health_default = health_default
+            self.intellect_default = intellect_default
+            self.complete_creation()
+
         def complete_creation(self):
-
             self.restore_stats()
-
             self.hp_default = self.hp_default_define()
             self.restore_hp()
-
             self.mana_default = self.mana_default_define()
             self.restore_mana()
 
+        def defence_calc(self):
+            self.defence = self.agility + 7
+            if len(self.armor_current):
+                self.defence += self.armor_current[0].bonus
+            if len(self.shield_current):
+                self.defence += self.shield_current[0].bonus
 
-
+        def restore_stats(self):
+            self.strength = self.strength_default
+            self.agility = self.agility_default
+            self.health = self.health_default
+            self.intellect = self.intellect_default
+        
         def hp_default_define(self):
             return (self.health_default * 4 + 4)
 
+        def restore_hp(self):
+            self.hp = self.hp_default
+        
+        def restore_mana(self):
+            self.mana = self.mana_default
+    
         def attack_rate(self):
             if self.strength == 1:
                 i = int(self.dice(2))
@@ -281,13 +257,6 @@ init python:
                 i = int(self.dice(7, 4))
             return i
 
-        def defence_calc(self):
-            self.defence = self.agility + 7
-            if len(self.armor_current):
-                self.defence += self.armor_current[0].bonus
-            if len(self.shield_current):
-                self.defence += self.shield_current[0].bonus
-        
         def learn_define(self, spell):
             return False
 
@@ -298,25 +267,31 @@ init python:
             else:
                 renpy.say(narrator, "Заклинание " + spell.name + " не удалось выучить.")
         
-        def restore_stats(self):
-            self.strength = self.strength_default
-            self.agility = self.agility_default
-            self.health = self.health_default
-            self.intellect = self.intellect_default
-        
-        def restore_hp(self):
-            self.hp = self.hp_default
-        
-        def restore_mana(self):
-            self.mana = self.mana_default
-
         def is_enough_mana():
             for i in self.spellbook:
                 if self.mana >= i.mana_cost:
                     return True 
                     break
                 else:
-                    return False 
+                    return False
+
+        def round(self):
+            if self.round_count > 0:
+                self.round_count -= 1
+            else:
+                self.round_count = self.round_count_default
+
+        def turn_define(self):
+            x = 0
+            y = 0
+            while x == y:
+                x = self.dice()
+                y = self.dice()
+            if x > y:
+                self.round_count = self.round_count_default
+            else:
+                self.round_count = 0
+
         def turn_start(self, band):
             if self.round_count > 0:
                 self.player_turn(band)
@@ -334,12 +309,12 @@ init python:
             if self.isalive_silent():
                 if self.status_attack_start_effect():
                     self.action_select(band)
-            self.round()
 
         def action_select(self, band):
             selected = renpy.display_menu([('Атака оружием', 'weapon'), ('Применить заклинание', 'magic')])
             if selected == 'weapon':
                 self.fight_weapon((self.enemy_select(band)))
+                self.round()
             elif selected == 'magic':
                 if len(self.spellbook):
                     self.spell_select(band)
@@ -348,18 +323,18 @@ init python:
                     self.action_select(band)
             
         def spell_select(self, band):
-            selected = renpy.display_menu([(i.name + ' ' str(i.mana_cost), i)] + [("ОТМЕНА", 'cancel')])
+            selected = renpy.display_menu([(i.name + ' ' + str(i.mana_cost), i) for i in self.spellbook if i.mana_cost <= self.mana] + [("ОТМЕНА", 'cancel')])
             if selected == 'cancel':
                 self.action_select(band)
             else:
-                i.cast(self, band)
+                selected.cast(self, band)
 
         def enemy_select(self, band):
-            selected = renpy.display_menu([(i.name + str(i.hp) + ' / ' + str(i.hp_default), i) for i in band if i.isalive_silent()] + [("ОТМЕНА", 'cancel')])
+            selected = renpy.display_menu([(i.name + ' ' + str(i.hp) + ' / ' + str(i.hp_default), i) for i in band if i.isalive_silent()] + [("ОТМЕНА", 'cancel')])
             if selected == 'cancel':
-                self.action_select()
+                self.action_select(band)
             else:
-                return i
+                return selected
 
         def add_item(self, item):
             if type(item).__name__ == 'Weapon':
@@ -445,6 +420,9 @@ init python:
                 return False
     
     class Warrior(Player):
+        def complete_creation(self):
+            super().complete_creation()
+            self.round_count_default = 2
         
         def mana_default_define(self):
             return self.intellect_default
@@ -509,8 +487,7 @@ init python:
             return i
         
         def turn_define(self):
-            global round_count
-            round_count = 1
+            self.round_count = 1
 
         def attack_rate(self):
             if self.agility > 9:
@@ -651,7 +628,7 @@ init python:
             if selected == 'cancel':
                 player.action_select()
             else:
-                return i
+                return selected
 
         def spell_damage(self, player, enemy):
             if self.resistance_check(enemy):
@@ -664,7 +641,8 @@ init python:
         damage = 5
 
         def spell_damage(self, player, enemy):
-            super().spell_damage()
+            super().spell_damage(player, enemy)
+            player.mana -= self.mana_cost
             renpy.say(narrator, player.name + " касается противника пальцами, которые вспыхивают огнём.\n" + enemy.name + " получает урон 5 ЖС")
     
     fire_fingers_spell = Fire_Fingers(5)
@@ -675,24 +653,27 @@ init python:
         damage = 3
         selected = []
 
+        def cast(self, player, band):
+            self.enemy_select(player, band)
+            player.round()
+
         def enemy_select(self, player, band):
             selected = ''
             cnt = 0
-            while selected != 'cancel' or player.mana < self.mana_cost:
-                selected = renpy.display_menu([(i.name + str(i.hp) + ' / ' + str(i.hp_default), i) for i in band if i.isalive_silent()] + [("ОТМЕНА", 'cancel')])
-                if selected == 'cancel' and cnt == 0:
-                    player.action_select()
+            while selected != 'cancel' and player.mana >= self.mana_cost:
+                selected = renpy.display_menu([(i.name + ' ' + str(i.hp) + ' / ' + str(i.hp_default), i) for i in band if i.isalive_silent()] + [("ОТМЕНА", 'cancel')])
+                if selected == 'cancel':
+                    if cnt == 0:
+                        player.action_select()
                 else:
                     player.mana -= self.mana_cost
-                    self.spell_damage(i)
+                    self.spell_damage(player, selected)
                     cnt += 1
         
-        def cast(self, player, band):
-            for i in self.selected:
-                if i.resistance_check():
-                    i.hp -= self.damage
-                    renpy.say(narrator, i.name + " получил урон " + str(self.damage) + " ЖС")
-            self.selected.clear()
+        def spell_damage(self, player, enemy):
+            super().spell_damage(player, enemy)
+            renpy.say(narrator, player.name + " направляет в противника пучок энергии.\n" + enemy.name + " получает урон 5 ЖС")
+
         
 
 
@@ -710,47 +691,49 @@ init python:
         type = 'transformation'
         name = 'Изменение Роста'
 
-        def cast(self):
+        def cast(self, player, band):
             direction = renpy.display_menu([("Увеличить", "up"), ("Уменьшить", "down"), ("Отмена", "cancel")])
             if direction == 'up':
-                self.strength = player.strength * 2
-                self.agility = player.agility // 2
-                self.defence_calc()
+                player.strength = player.strength * 2
+                player.agility = player.agility // 2
+                player.defence_calc()
                 renpy.say(narrator, player.name + " увеличил свой рост. Сила выросла, а ловкость6 снизилась в 2 раза.")
-                self.round()
+                player.round()
             elif direction == 'down':
-                self.strengh = player.strengh // 2
-                self.agility = player.agility * 2
-                self.defence_calc()
+                player.strength = player.strength // 2
+                player.agility = player.agility * 2
+                player.defence_calc()
                 renpy.say(narrator, player.name + " уменьшил свой рост. Ловкость увеличилась, а сила уменьшилась в 2 раза.")
-                self.round()
+                player.round()
             else:
-                pass
+                self.action_select(band)
 
     size_change_spell = Size_Change(8)
 
     class Armor(Magic_StatChanging):
-        type = 'transformation'
+        type = 'energy'
         name = 'Волшебные Доспехи'
-        amount = 0
-        max_amount = 0
 
-        def cast(self, player):
-            self.max_amount = player.mana // self.mana_cost
-            string = "Сколько уровней поля создать?\nВведи число не более " + str(self.max_amount)
-            self.amount = renpy.input()
+        def cast(self, player, band):
+            max_amount = player.mana // self.mana_cost
+            string = "Сколько уровней поля создать?\nВведи число не более " + str(max_amount)
+            amount = renpy.input(string)
             chck = True
             try:
-                self.amount = int(self.amount)
+                amount = int(amount)
             except ValueError:
                 chck = False
-            if chck == True and self.amount <= self.max_amount and self.amount > 0:
-                player.mana -= self.mana_cost
-                player.defence += self.amount
-                player.armor_spell_status = self.amount
-                renpy.say(narrator, player.name + " создал вокруг себя силовое поле. Уровней — " + str(self.amount))
+            if chck == True and amount <= max_amount and amount > 0:
+                player.mana -= (self.mana_cost * amount)
+                player.defence += amount
+                player.armor_spell_status = amount
+                renpy.say(narrator, player.name + " создал вокруг себя силовое поле. Уровней — " + str(amount))
+                player.round()
             else:
                 renpy.say(narrator, "Неправильное значение")
+                player.action_select(band)
+    #        amount = player.mana // self.mana_cost
+    #        selected = renpy.display_menu([(str(i), i) for i in range(1, amount+1)])
     
     armor_spell = Armor(3)
 
@@ -831,16 +814,14 @@ init python:
 
 label start:
     hide main_menu
-    $ hero = Warrior() #тестовое создание персонажа
-    $ hero.strength_default = 5
-    $ hero.agility_default = 4
-    $ hero.intellect_default =2
-    $ hero.health_default = 6
-    $ hero.complete_creation()
+    $ hero = Warrior('Тестов', 18, 18, 18, 18) #тестовое создание персонажа
     $ hero.weapon_list.append(sword)
     $ hero.equip_weapon(sword)
-    $ hero.defence_calc()
-    $ hero.fire_skin_status = True
+    $ hero.spellbook.append(energy_spell)
+    $ hero.spellbook.append(fire_fingers_spell)
+    $ hero.spellbook.append(size_change_spell)
+    $ hero.spellbook.append(armor_spell)
+
 
     $ enemy1 = Zombie()
     $ enemy2 = Zombie()
