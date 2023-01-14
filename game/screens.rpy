@@ -1578,6 +1578,15 @@ screen character_screen():
 #                        text "[backpack.currentshield[0].name]"
 #                        text "[backpack.currentshield[0].defencebonus]"
 
+#screen enemy_screen():
+#    tag character_screen
+    frame xalign 1 ypos 0.01 xpos 0.87:
+            vbox:
+                xminimum 160
+                for i in band:
+                    if i.hp > 0:
+                        text "[i.name] [i.hp] / [i.hp_default]"
+
 screen worldmap():
     imagemap:
         xalign 0.5

@@ -624,7 +624,7 @@ init python:
                 return False
         
         def enemy_select(self, player, band):
-            selected = renpy.display_menu([(i.name + str(i.hp) + ' / ' + str(i.hp_default), i) for i in band if i.isalive_silent()] + [("ОТМЕНА", 'cancel')])
+            selected = renpy.display_menu([(i.name + ' ' + str(i.hp) + ' / ' + str(i.hp_default), i) for i in band if i.isalive_silent()] + [("ОТМЕНА", 'cancel')])
             if selected == 'cancel':
                 player.action_select()
             else:
@@ -651,7 +651,6 @@ init python:
         type = 'energy'
         name = 'Сгусток Энергии'
         damage = 3
-        selected = []
 
         def cast(self, player, band):
             self.enemy_select(player, band)
@@ -673,12 +672,22 @@ init python:
         def spell_damage(self, player, enemy):
             super().spell_damage(player, enemy)
             renpy.say(narrator, player.name + " направляет в противника пучок энергии.\n" + enemy.name + " получает урон 5 ЖС")
-
-        
-
-
-
+    
     energy_spell = Energy(3)
+
+    class Noose(Magic_Damaging):
+        type = 'energy'
+        name = 'Удавка'
+        damage = 0
+
+        def spell_damage(self, player, enemy):
+            player.mana -= self.mana_cost
+            if self.resistance_check(enemy):
+                enemy.noose_status = True
+
+    noose_spell = Noose(10)
+
+    
 
     class Magic_StatChanging():
         type = ''
@@ -758,10 +767,9 @@ init python:
         damage = 4
         bonus = 5
         resistance = ['song', 'death', 'illusion', 'poison', 'trans']
-        noose_status = 1 #тест
 
         def attack_rate(self):
-            return self.dice(2, 1) + 10
+            return self.dice(2, 1)
 
 ######## Вещи ########
 
@@ -821,6 +829,7 @@ label start:
     $ hero.spellbook.append(fire_fingers_spell)
     $ hero.spellbook.append(size_change_spell)
     $ hero.spellbook.append(armor_spell)
+    $ hero.spellbook.append(noose_spell)
 
 
     $ enemy1 = Zombie()
