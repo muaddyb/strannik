@@ -337,13 +337,29 @@ init python:
             self.round()
 
         def action_select(self, band):
-            selected = renpy.display_menu([('Атака оружием', 'weapon')])
-            self.choose_enemy(band, selected)
-
-        def choose_enemy(self, band, selected):
-            chosen = renpy.display_menu([(i.name + ' / ' + str(i.hp), i) for i in band if i.isalive_silent()])
+            selected = renpy.display_menu([('Атака оружием', 'weapon'), ('Применить заклинание', 'magic')])
             if selected == 'weapon':
-                self.fight_weapon(chosen)
+                self.fight_weapon((self.enemy_select(band)))
+            elif selected == 'magic':
+                if len(self.spellbook):
+                    self.spell_select(band)
+                else:
+                    renpy.say(narrator, self.name + ' не знает заклинаний.')
+                    self.action_select(band)
+            
+        def spell_select(self, band):
+            selected = renpy.display_menu([(i.name + ' ' str(i.mana_cost), i)] + [("ОТМЕНА", 'cancel')])
+            if selected == 'cancel':
+                self.action_select(band)
+            else:
+                i.cast(self, band)
+
+        def enemy_select(self, band):
+            selected = renpy.display_menu([(i.name + str(i.hp) + ' / ' + str(i.hp_default), i) for i in band if i.isalive_silent()] + [("ОТМЕНА", 'cancel')])
+            if selected == 'cancel':
+                self.action_select()
+            else:
+                return i
 
         def add_item(self, item):
             if type(item).__name__ == 'Weapon':
@@ -618,22 +634,38 @@ init python:
         damage = 0
         def __init__(self, mana_cost):
             self.mana_cost = mana_cost
+
+        def cast(self, player, band):
+            self.spell_damage(player, self.enemy_select(player, band))
+            player.round()
         
         def resistance_check(self, enemy):
             if self.type not in enemy.resistance:
                 return True
             else:
                 renpy.say(narrator, "Заклинание " + self.name + " не подействовало")
+                return False
+        
+        def enemy_select(self, player, band):
+            selected = renpy.display_menu([(i.name + str(i.hp) + ' / ' + str(i.hp_default), i) for i in band if i.isalive_silent()] + [("ОТМЕНА", 'cancel')])
+            if selected == 'cancel':
+                player.action_select()
+            else:
+                return i
+
+        def spell_damage(self, player, enemy):
+            if self.resistance_check(enemy):
+                enemy.hp -= self.damage
+
 
     class Fire_Fingers(Magic_Damaging):
         type = 'fire'
         name = 'Огненные Пальцы'
         damage = 5
 
-        def cast(self, player, enemy):
-            if self.resistance_check(enemy):
-                renpy.say(narrator, player.name + " касается противника пальцами, которые вспыхивают огнём.\n" + enemy.name + " получает урон 5 ЖС")
-                enemy.hp -= self.damage
+        def spell_damage(self, player, enemy):
+            super().spell_damage()
+            renpy.say(narrator, player.name + " касается противника пальцами, которые вспыхивают огнём.\n" + enemy.name + " получает урон 5 ЖС")
     
     fire_fingers_spell = Fire_Fingers(5)
 
@@ -643,11 +675,19 @@ init python:
         damage = 3
         selected = []
 
-        def select(self, player, enemy):
-            player.mana -= self.mana_cost
-            self.selected.append(enemy)
+        def enemy_select(self, player, band):
+            selected = ''
+            cnt = 0
+            while selected != 'cancel' or player.mana < self.mana_cost:
+                selected = renpy.display_menu([(i.name + str(i.hp) + ' / ' + str(i.hp_default), i) for i in band if i.isalive_silent()] + [("ОТМЕНА", 'cancel')])
+                if selected == 'cancel' and cnt == 0:
+                    player.action_select()
+                else:
+                    player.mana -= self.mana_cost
+                    self.spell_damage(i)
+                    cnt += 1
         
-        def cast(self):
+        def cast(self, player, band):
             for i in self.selected:
                 if i.resistance_check():
                     i.hp -= self.damage
@@ -670,17 +710,22 @@ init python:
         type = 'transformation'
         name = 'Изменение Роста'
 
-        def cast(self, player, direction):
+        def cast(self):
+            direction = renpy.display_menu([("Увеличить", "up"), ("Уменьшить", "down"), ("Отмена", "cancel")])
             if direction == 'up':
-                player.strength = player.strength * 2
-                player.agility = player.agility // 2
-                player.defence_calc()
-                renpy.say(narrator, player.name + " увеличил свой рост. Сила выросла, а ловкость снизилась в 2 раза.")
-            else:
-                player.strengh = player.strengh // 2
-                player.agility = player.agility * 2
-                player.defence_calc()
+                self.strength = player.strength * 2
+                self.agility = player.agility // 2
+                self.defence_calc()
+                renpy.say(narrator, player.name + " увеличил свой рост. Сила выросла, а ловкость6 снизилась в 2 раза.")
+                self.round()
+            elif direction == 'down':
+                self.strengh = player.strengh // 2
+                self.agility = player.agility * 2
+                self.defence_calc()
                 renpy.say(narrator, player.name + " уменьшил свой рост. Ловкость увеличилась, а сила уменьшилась в 2 раза.")
+                self.round()
+            else:
+                pass
 
     size_change_spell = Size_Change(8)
 
@@ -726,10 +771,11 @@ init python:
         name = 'Зомби'
         defence = 8
         hp = 6
+        hp_default = 6
         damage = 4
         bonus = 5
         resistance = ['song', 'death', 'illusion', 'poison', 'trans']
-        noose_status = 1
+        noose_status = 1 #тест
 
         def attack_rate(self):
             return self.dice(2, 1) + 10
