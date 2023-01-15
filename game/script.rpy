@@ -31,7 +31,7 @@ init python:
         stone_skin_status = 0
         armor_spell_status = 0
         poison_status = 0
-        noose_status = 0
+        noose_status = False
         fire_skin_status = False
         resistance = []
         damage_type = 'normal'
@@ -72,6 +72,7 @@ init python:
             if self.poison_status: # Яд наносит урон 3 ЖС
                 self.hp -= 3
                 renpy.say(narrator, self.name + " теряет 3 ЖС от яда.")
+                self.poison_status -= 1
             return self.isalive() # Проверка, жив ли персонаж
 
     # Проверка действия заклинания Каменная кожа. Если есть, понижается его уровень.    
@@ -687,6 +688,51 @@ init python:
 
     noose_spell = Noose(10)
 
+    class Poisoned_Spear(Magic_Damaging):
+        type = 'poison'
+        name = 'Отравленное Копьё'
+        damage = 4
+
+        def spell_damage(self, player, enemy):
+            super().spell_damage(player, enemy)
+            enemy.poison_status = 3
+            player.mana -= self.mana_cost
+
+    poisoned_spear_spell = Poisoned_Spear(5)
+
+    class Vampirism(Magic_Damaging):
+        type = 'death'
+        name = 'Энергетический Вампиризм'
+        
+        def cast(self, player, band):
+            enemy = player.enemy_select(band)
+            if player.attack(enemy):
+                self.level_select(player, enemy)
+            player.round()
+
+        def level_select(self, player, enemy):
+            max_amount = player.mana // self.mana_cost
+            if max_amount > enemy.hp:
+                max_amount = enemy.hp
+            string = "Сколько жизни отнять?\nВведи число не более " + str(max_amount)
+            amount = renpy.input(string)
+            chck = True
+            try:
+                amount = int(amount)
+            except ValueError:
+                chck = False
+            if chck == True and amount <= max_amount and amount > 0:
+                player.mana -= (self.mana_cost * amount)
+                player.hp += amount
+                enemy.hp -= amount
+                renpy.say(narrator, player.name + " высосал жизненные силы " + str(amount) + " ЖС")
+                enemy.isalive()
+            else:
+                renpy.say(narrator, "Неправильное значение")
+                self.level_select(player, enemy)
+
+    vampire_spell = Vampirism(3)
+
     
 
     class Magic_StatChanging():
@@ -745,6 +791,18 @@ init python:
     #        selected = renpy.display_menu([(str(i), i) for i in range(1, amount+1)])
     
     armor_spell = Armor(3)
+
+    class Ghost(Magic_StatChanging):
+        type = 'transformation'
+        name = 'Привидение'
+
+        def cast(self, player, band):
+            player.mana -= self.mana_cost
+            player.ghost_status = True
+            player.round()
+
+    ghost_spell = Ghost(15)
+
 
 
         
