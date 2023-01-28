@@ -722,17 +722,66 @@ init python:
             except ValueError:
                 chck = False
             if chck == True and amount <= max_amount and amount > 0:
-                player.mana -= (self.mana_cost * amount)
-                player.hp += amount
-                enemy.hp -= amount
-                renpy.say(narrator, player.name + " высосал жизненные силы " + str(amount) + " ЖС")
-                enemy.isalive()
+                self.spell_damage(player, enemy, amount)
             else:
                 renpy.say(narrator, "Неправильное значение")
                 self.level_select(player, enemy)
 
+        def spell_damage(self, player, enemy, amount):
+            player.mana -= (self.mana_cost * amount)
+                player.hp += amount
+                enemy.hp -= amount
+                renpy.say(narrator, player.name + " высосал жизненные силы " + str(amount) + " ЖС")
+                enemy.isalive()
+
     vampire_spell = Vampirism(3)
 
+    class FireBall(Magic_Damaging):
+        type = 'fire'
+        name = 'Огненный Шар'
+        damage = 5
+
+        def cast(self, player, band):
+            damage_list = []
+            if len(band) <= 4:
+                for i in band:
+                    damage_list.append(i)
+            else:
+                damage_list.append(player.enemy_select(band))
+                while len(damage_list) != 4:
+                    i = renpy.randint(0, (len(band)-1))
+                    if band[i] not in damage_list:
+                        damage_list.append(i)
+            amount = self.level_select(player)
+            player.mana -= amount * self.mana_cost
+            for y in damage_list:
+                y.hp -= amount * self.damage
+        
+        def level_select(self, player):
+            max_amount = player.mana // self.mana_cost
+            if max_amount > 4:
+                max_amount = 4
+            renpy.say(narrator, "Выбери уровень интенсивности заклинания")
+            selected = int(renpy.display_menu([(str(i), i) for i in range(1, (max_amount+1))]))
+            return selected
+
+        def spell_damage(self, player, enemy, amount):
+            player.mana -= self.mana_cost * amount
+            if self.resistance_check(enemy):
+                enemy.hp -= self.damage * amount
+
+    fireball_spell = FireBall(6)
+
+    class Lightning(FireBall):
+        type = 'lightning'
+        name = 'Молния'
+        damage = 6
+
+        def cast(self, player, band):
+
+
+
+    lightning_spell = Lightning(6)
     
 
     class Magic_StatChanging():
