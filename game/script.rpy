@@ -742,20 +742,11 @@ init python:
         damage = 5
 
         def cast(self, player, band):
-            damage_list = []
-            if len(band) <= 4:
-                for i in band:
-                    damage_list.append(i)
-            else:
-                damage_list.append(player.enemy_select(band))
-                while len(damage_list) != 4:
-                    i = renpy.randint(0, (len(band)-1))
-                    if band[i] not in damage_list:
-                        damage_list.append(i)
             amount = self.level_select(player)
+            damage_list = damage_list_combine(player, band)
             player.mana -= amount * self.mana_cost
             for y in damage_list:
-                y.hp -= amount * self.damage
+                self.spell_damage(player, y, amount)
         
         def level_select(self, player):
             max_amount = player.mana // self.mana_cost
@@ -765,8 +756,20 @@ init python:
             selected = int(renpy.display_menu([(str(i), i) for i in range(1, (max_amount+1))]))
             return selected
 
+        def damage_list_combine(self, player, band):
+            damage_list = []
+            if len(band) <= 4:
+                    for i in band:
+                        damage_list.append(i)
+                else:
+                    damage_list.append(player.enemy_select(player, band))
+                    while len(damage_list) != 4:
+                        i = renpy.randint(0, (len(band)-1))
+                        if band[i] not in damage_list:
+                            damage_list.append(i)
+            return damage_list
+
         def spell_damage(self, player, enemy, amount):
-            player.mana -= self.mana_cost * amount
             if self.resistance_check(enemy):
                 enemy.hp -= self.damage * amount
 
@@ -778,10 +781,24 @@ init python:
         damage = 6
 
         def cast(self, player, band):
-
-
+            amount = self.level_select(player)
+            self.spell_damage(player, self.enemy_select(player, band), amount)
+            player.mana -= amount * self.mana_cost
 
     lightning_spell = Lightning(6)
+
+    class LigtningChain(FireBall):
+        type = 'lightning'
+        name = 'Молния-цепочка'
+        damage = 6
+
+        def cast(self, player, band):
+            amount = self.level_select(player)
+            damage_list = damage_list_combine(player, band)
+            player.mana -= amount * self.mana_cost
+            for y in damage_list:
+                self.spell_damage(player, y, amount)
+                amount -= 1
     
 
     class Magic_StatChanging():
@@ -790,6 +807,21 @@ init python:
 
         def __init__(self, mana_cost):
             self.mana_cost = mana_cost
+
+        def input_level(self, player):
+            max_amount = player.mana // self.mana_cost
+            string = "Заклинание какого уровня сотворить?\nВведи число не более " + str(max_amount)
+            amount = renpy.input(string)
+            chck = True
+            try:
+                amount = int(amount)
+            except ValueError:
+                chck = False
+            if chck == True and amount <= max_amount and amount > 0:
+                return amount
+            else:
+                renpy.say(narrator, "Неправильное значение")
+                player.action_select(band)
 
     class Size_Change(Magic_StatChanging):
         type = 'transformation'
@@ -819,25 +851,12 @@ init python:
         name = 'Волшебные Доспехи'
 
         def cast(self, player, band):
-            max_amount = player.mana // self.mana_cost
-            string = "Сколько уровней поля создать?\nВведи число не более " + str(max_amount)
-            amount = renpy.input(string)
-            chck = True
-            try:
-                amount = int(amount)
-            except ValueError:
-                chck = False
-            if chck == True and amount <= max_amount and amount > 0:
-                player.mana -= (self.mana_cost * amount)
-                player.defence += amount
-                player.armor_spell_status = amount
-                renpy.say(narrator, player.name + " создал вокруг себя силовое поле. Уровней — " + str(amount))
-                player.round()
-            else:
-                renpy.say(narrator, "Неправильное значение")
-                player.action_select(band)
-    #        amount = player.mana // self.mana_cost
-    #        selected = renpy.display_menu([(str(i), i) for i in range(1, amount+1)])
+            amount = self.input_level(player)
+            player.mana -= (self.mana_cost * amount)
+            player.defence += amount
+            player.armor_spell_status = amount
+            renpy.say(narrator, player.name + " создал вокруг себя силовое поле. Уровней — " + str(amount))
+            player.round()
     
     armor_spell = Armor(3)
 
@@ -852,6 +871,18 @@ init python:
 
     ghost_spell = Ghost(15)
 
+    class StoneSkin(Magic_StatChanging):
+        type = 'transfomation'
+        name = 'Каменная кожа'
+
+        def cast(self, player, band):
+            amount = self.input_level(player)
+            player.mana -= (self.mana_cost * amount)
+            player.stone_skin_status = amount
+            renpy.say(narrator, player.name + " создал на себе каменную кожу. Уровней — " + str(amount))
+            player.round()
+
+    stone_skin_spell = StoneSkin(5)
 
 
         
