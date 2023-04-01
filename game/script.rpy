@@ -1,5 +1,5 @@
 ﻿# The script of the game goes in this file.
-#Test commit
+#Test commit 2
 
 # Declare characters used by this game. The color argument colorizes the
 # name of the character.
